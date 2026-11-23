@@ -16,6 +16,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
   const rows: { name: string; ok: boolean; env: string; what: string }[] = [
     { name: "Claude (Anthropic)", ok: ints.anthropic, env: "ANTHROPIC_API_KEY", what: "Required. Business analysis, segments, lead research, emails and replies." },
+    { name: "Instantly (sending)", ok: ints.instantly, env: "INSTANTLY_API_KEY", what: "Pre-warmed domains and mailboxes, continuous warm-up and rotation for high-volume sending. See Sending infrastructure." },
     { name: "Apollo", ok: ints.apollo, env: "APOLLO_API_KEY", what: "Decision makers with verified work emails. Search is free, and each revealed email costs 1 credit." },
     { name: "Hunter", ok: ints.hunter, env: "HUNTER_API_KEY", what: "Finds emails at a company domain and verifies every address before sending." },
     { name: "Google Maps (Places)", ok: ints.places, env: "GOOGLE_PLACES_API_KEY", what: "Local and small businesses: restaurants, clinics, studios, venues." },
@@ -31,8 +32,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
       <Card>
         <CardHeader
-          title="Sending mailboxes"
-          description="Each mailbox sends up to its daily limit. Start low (20–30/day) on new or rarely-used accounts and raise it slowly."
+          title="Gmail mailboxes"
+          description="For low-volume sending from your own inbox, and for Google Calendar booking. For high volume, use Sending infrastructure (Instantly)."
           action={
             ints.google ? (
               <a href="/api/google/connect" className={buttonClass("primary", "sm")}>

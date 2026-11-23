@@ -86,8 +86,8 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold">{STEP_LABEL[m.step] ?? `Step ${m.step + 1}`}</span>
-                        <Badge tone={m.status === "approved" ? "success" : m.status === "failed" ? "danger" : m.status === "cancelled" ? "neutral" : "info"}>
-                          {m.status}
+                        <Badge tone={m.status === "approved" || m.status === "queued" ? "success" : m.status === "failed" ? "danger" : m.status === "cancelled" ? "neutral" : "info"}>
+                          {m.status === "queued" ? "queued in Instantly" : m.status}
                         </Badge>
                         {m.scheduledAt && m.status === "approved" ? (
                           <span className="text-xs text-muted">due {m.scheduledAt.toLocaleString()}</span>

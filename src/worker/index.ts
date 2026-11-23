@@ -3,6 +3,7 @@ import { db, schema, sql } from "../lib/db";
 import { requeueStale, workLoop } from "../lib/jobs/runner";
 import { sendDue } from "../lib/pipeline/send";
 import { pollReplies } from "../lib/pipeline/replies";
+import { syncInstantly } from "../lib/pipeline/instantly";
 import { optimizeProject } from "../lib/pipeline/stats";
 import { APP_NAME } from "../lib/config";
 
@@ -34,7 +35,8 @@ async function main() {
 
   const timers = [
     every("send", 45_000, sendDue),
-    every("poll-replies", 120_000, pollReplies),
+    every("poll-replies", 120_000, () => pollReplies()),
+    every("instantly-sync", 120_000, syncInstantly),
     every("optimize", 15 * 60_000, async () => {
       const projects = await db.select({ id: schema.projects.id }).from(schema.projects);
       for (const p of projects) await optimizeProject(p.id);

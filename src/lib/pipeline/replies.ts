@@ -25,9 +25,19 @@ async function cancelPendingSequence(leadId: string) {
       and(
         eq(schema.messages.leadId, leadId),
         eq(schema.messages.kind, "sequence"),
-        inArray(schema.messages.status, ["draft", "approved"]),
+        inArray(schema.messages.status, ["draft", "approved", "queued"]),
       ),
     );
+}
+
+/** The Google account used for calendar booking: the reply's own mailbox if it has Calendar, else any connected one. */
+async function calendarAccount(preferredId?: string | null) {
+  if (preferredId) {
+    const mb = await db.query.mailboxes.findFirst({ where: eq(schema.mailboxes.id, preferredId) });
+    if (mb && hasCalendar(mb)) return mb;
+  }
+  const all = await db.query.mailboxes.findMany({ where: eq(schema.mailboxes.active, true) });
+  return all.find(hasCalendar) ?? null;
 }
 
 /** Pull new replies on threads we started, for every connected mailbox. */
@@ -156,7 +166,7 @@ export async function handleReply(messageId: string) {
   if (!lead) return;
   const segment = lead.segmentId ? await db.query.segments.findFirst({ where: eq(schema.segments.id, lead.segmentId) }) : null;
   const company = lead.companyId ? await db.query.companies.findFirst({ where: eq(schema.companies.id, lead.companyId) }) : null;
-  const mailbox = inbound.mailboxId ? await db.query.mailboxes.findFirst({ where: eq(schema.mailboxes.id, inbound.mailboxId) }) : null;
+  const mailbox = await calendarAccount(inbound.mailboxId);
 
   const thread = await db.query.messages.findMany({
     where: and(eq(schema.messages.leadId, lead.id), inArray(schema.messages.status, ["sent", "received"])),
@@ -253,6 +263,9 @@ export async function handleReply(messageId: string) {
       status: "draft",
       toEmail: lead.email,
       decision,
+      provider: inbound.provider,
+      inReplyToId: inbound.id,
+      externalAccount: inbound.externalAccount,
     })
     .returning();
 
@@ -271,7 +284,7 @@ export async function approveReply(messageId: string, overrideBody?: string) {
   if (draft.decision?.action === "book_meeting" && draft.decision.meetingStartIso) {
     const project = await getProject(draft.projectId);
     const lead = await db.query.leads.findFirst({ where: eq(schema.leads.id, draft.leadId) });
-    const mailbox = draft.mailboxId ? await db.query.mailboxes.findFirst({ where: eq(schema.mailboxes.id, draft.mailboxId) }) : null;
+    const mailbox = await calendarAccount(draft.mailboxId);
     const start = new Date(draft.decision.meetingStartIso);
     if (lead && mailbox && hasCalendar(mailbox) && !Number.isNaN(start.getTime()) && start.getTime() > Date.now()) {
       const company = lead.companyId ? await db.query.companies.findFirst({ where: eq(schema.companies.id, lead.companyId) }) : null;

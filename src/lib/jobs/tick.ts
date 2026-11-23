@@ -1,6 +1,7 @@
 import { db, schema } from "../db";
 import { pollReplies } from "../pipeline/replies";
 import { sendDue } from "../pipeline/send";
+import { syncInstantly } from "../pipeline/instantly";
 import { optimizeProject } from "../pipeline/stats";
 import { drainJobs } from "./drain";
 import { acquireLease, releaseLease } from "./lease";
@@ -19,6 +20,7 @@ export async function scheduledTick(budgetMs: number) {
     try {
       await sendDue().catch((e) => console.error("[tick] send", e));
       await pollReplies({ minIntervalMs: 90_000 }).catch((e) => console.error("[tick] poll", e));
+      await syncInstantly().catch((e) => console.error("[tick] instantly sync", e));
       const projects = await db.select({ id: schema.projects.id }).from(schema.projects);
       for (const p of projects) await optimizeProject(p.id).catch((e) => console.error("[tick] optimize", e));
     } finally {

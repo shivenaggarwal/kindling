@@ -35,6 +35,7 @@ Sign in with `APP_PASSWORD` from `.env`.
 | `ANTHROPIC_API_KEY` | **Required.** All AI steps | console.anthropic.com → API keys |
 | `APOLLO_API_KEY` | Decision makers with verified emails | Apollo → Settings → Integrations → API. The key needs access to `mixed_people/api_search` (free) and `people/bulk_match` (1 credit per revealed email). |
 | `HUNTER_API_KEY` | Emails at a domain and verification | hunter.io → API |
+| `INSTANTLY_API_KEY` | High-volume sending through warmed mailboxes | Instantly → Settings → Integrations → API Keys (scope `all:all`). Needs a paid plan with API access. |
 | `GOOGLE_PLACES_API_KEY` | Local businesses from Google Maps | Google Cloud → enable **Places API (New)** → Credentials |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Gmail sending, reading replies, and Calendar booking | See below |
 
@@ -51,12 +52,30 @@ Each lead source is optional. AI web research always runs, and every other sourc
 
 Scopes requested: `gmail.send`, `gmail.readonly`, `calendar.events` and `calendar.freebusy`. Refresh tokens are stored encrypted with `APP_SECRET`.
 
+## High-volume sending (how Explee-style tools stay out of spam)
+
+Sending thousands of cold emails a day without landing in spam takes three things:
+
+1. **Many separate sending domains and mailboxes.** Never use your main domain. Each mailbox sends ~30 cold emails a day, so 1,000/day ≈ 33 mailboxes ≈ 11 domains with 3 mailboxes each, all with SPF, DKIM and DMARC.
+2. **Continuous warm-up.** Mailboxes trade emails inside a large warm-up network (opened, rescued from spam, replied to) to build and keep their reputation.
+3. **Disciplined sending.** Rotation across mailboxes, verified lists (bounces under ~2%), plain text with no tracking, one-click unsubscribe, and spam complaints under 0.3%.
+
+Kindling delivers through **Instantly** for this layer (set `INSTANTLY_API_KEY`):
+
+- **Sending infrastructure** page: buy **pre-warmed** domains and mailboxes, which can send the day you buy them, or new lookalike domains that Instantly warms up for you. You get a price quote first, and nothing is charged until you confirm. It also shows each mailbox's warm-up score, health and the total daily capacity.
+- One Instantly campaign per segment. Each lead's three AI-written emails travel as custom variables (`{{kSubject}}`, `{{kEmail1}}`, `{{kFollowup1}}`, `{{kFollowup2}}`). Campaigns are plain text with open and link tracking off, a one-click unsubscribe header, and stop-on-reply.
+- Only mailboxes with a warm-up score of 80 or more send. New ones join campaigns automatically once they get there.
+- Replies, bounces and unsubscribes come back through a webhook (Connect reply events). Kindling also checks Instantly every 5 minutes as a backup. Kindling drafts each answer and sends it from the same mailbox, in the same thread.
+
+Check once on your first live campaign, because the API docs leave them open:
+- **Weekdays:** confirm the campaign schedule shows the right days in Instantly. Kindling assumes `"0"` = Monday; set `INSTANTLY_SUNDAY_FIRST=1` if it turns out to be Sunday.
+- **Variables:** confirm the first email shows the personalised text, not `{{kEmail1}}`.
+
+**Gmail** (connected via Google OAuth) remains available per project for low volume, and it's used for Google Calendar booking either way.
+
 ## Deliverability and compliance
 
-- **Send from a separate domain** (e.g. `getacme.com`), not your main one, and set up SPF, DKIM and DMARC.
-- **Warm new mailboxes up**: start at 10–20 emails a day and raise the limit slowly. Add more mailboxes to get more volume.
-- The default sequence is plain text, has no links in the first email, sends one email at a time per mailbox at least 4 minutes apart, and adds a `List-Unsubscribe` header.
-- **Fill in the sender name and postal address** in each project's Settings. They go in the footer, along with the opt-out line. "Unsubscribe" and "not interested" replies, and bounces, are added to the do-not-contact list automatically.
+- Fill in the **sender name and postal address** in each project's Settings. They go in the footer, along with the opt-out line. "Unsubscribe" and "not interested" replies, and bounces, are added to the do-not-contact list automatically.
 - Cold B2B email is legal in the US (CAN-SPAM) and, under "legitimate interest", in the UK/EU (PECR/GDPR) when it's relevant to the recipient's role, identifies you, and honours opt-outs. Check the rules for the countries you target.
 
 ## Deploy to Vercel
@@ -90,6 +109,7 @@ Run **one** worker process. Jobs are claimed with `FOR UPDATE SKIP LOCKED`, so a
 ```
 src/lib/pipeline/   analyze → segments → leads → write → send → replies → stats (autopilot)
 src/lib/sources/    apollo, hunter, places, site crawler
+src/lib/instantly/  Instantly API client (accounts, warm-up, campaigns, leads, Unibox, webhooks, DFY orders)
 src/lib/google/     OAuth client, Gmail send/read, Calendar free/busy and events
 src/lib/ai/claude.ts  Claude wrapper: web search/fetch, strict structured output, cost tracking
 src/lib/jobs/       Postgres job queue, runner, serverless drain + scheduler tick

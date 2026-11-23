@@ -5,6 +5,8 @@ import { sendMail } from "../google/gmail";
 import { activity } from "../log";
 import { localParts } from "../time";
 import { renderBody } from "./write";
+import { pushApprovedToInstantly, sendReplyViaInstantly } from "./instantly";
+import { sendVia } from "../config";
 
 const MIN_GAP_MINUTES = 4; // minimum spacing between sends from one mailbox
 const CONTACTABLE = new Set(["drafted", "contacted"]);
@@ -147,6 +149,14 @@ export async function deliver(msg: Message, mailbox: Mailbox, project: Project) 
  * daily limits and spacing.
  */
 export async function sendDue() {
+  // Explee-style path: hand approved sequences to Instantly's warmed mailboxes.
+  await pushApprovedToInstantly().catch((e) => console.error("[send] instantly push", e));
+  const instantlyReplies = await db.query.messages.findMany({
+    where: and(eq(schema.messages.kind, "reply"), eq(schema.messages.status, "approved"), eq(schema.messages.provider, "instantly")),
+    limit: 20,
+  });
+  for (const r of instantlyReplies) await sendReplyViaInstantly(r);
+
   const allMailboxes = await db.query.mailboxes.findMany({ where: eq(schema.mailboxes.active, true) });
   if (!allMailboxes.length) return;
   const mailboxById = new Map(allMailboxes.map((m) => [m.id, m]));
@@ -162,7 +172,7 @@ export async function sendDue() {
 
   // 1) Approved replies — send right away from the thread's mailbox.
   const replies = await db.query.messages.findMany({
-    where: and(eq(schema.messages.kind, "reply"), eq(schema.messages.status, "approved")),
+    where: and(eq(schema.messages.kind, "reply"), eq(schema.messages.status, "approved"), eq(schema.messages.provider, "gmail")),
     limit: 20,
   });
   for (const r of replies) {
@@ -206,7 +216,7 @@ export async function sendDue() {
       continue;
     }
     const project = await getProj(m.projectId);
-    if (!project || !inSendWindow(project, now)) continue;
+    if (!project || sendVia(project.settings) !== "gmail" || !inSendWindow(project, now)) continue;
 
     // Never send a follow-up before the step before it has gone out.
     if (m.step > 0) {

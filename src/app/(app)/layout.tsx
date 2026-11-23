@@ -53,6 +53,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
 
         <div className="mt-4 space-y-0.5 border-t border-border pt-3">
+          <NavLink href="/infrastructure">Sending infrastructure</NavLink>
           <NavLink href="/settings">Mailboxes & integrations</NavLink>
           <form action={logout}>
             <button className="w-full rounded-lg px-2.5 py-1.5 text-left text-sm text-muted hover:bg-surface-2 hover:text-text">Sign out</button>
@@ -69,6 +70,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </Link>
           <div className="flex gap-3 text-sm text-muted">
             <Link href="/projects/new">New</Link>
+            <Link href="/infrastructure">Sending</Link>
             <Link href="/settings">Settings</Link>
           </div>
         </div>

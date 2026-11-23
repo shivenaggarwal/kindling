@@ -11,6 +11,7 @@ import { enqueue } from "./jobs/queue";
 import { kick } from "./jobs/kick";
 import { activity } from "./log";
 import { approveReply } from "./pipeline/replies";
+import { removeFromInstantly, setSegmentCampaignActive } from "./pipeline/instantly";
 import { normalizeDomain } from "./sources/site";
 import { isValidTimezone } from "./time";
 import { defaultProjectSettings, type ProjectSettings, type Targeting } from "./types";
@@ -84,6 +85,8 @@ export async function updateProjectSettings(projectId: string, fd: FormData) {
     leadsPerBatch: Math.max(5, Math.min(100, Number(str(fd, "leadsPerBatch")) || 25)),
     optOutLine: str(fd, "optOutLine"),
     extraInstructions: str(fd, "extraInstructions"),
+    sendVia: str(fd, "sendVia") === "gmail" ? "gmail" : str(fd, "sendVia") === "instantly" ? "instantly" : p.settings.sendVia,
+    instantlyAccounts: fd.getAll("instantlyAccounts").map(String),
   };
   if (settings.followupDays.length < 2) settings.followupDays = [3, 4];
   await db.update(schema.projects).set({ settings }).where(eq(schema.projects.id, projectId));
@@ -139,6 +142,7 @@ export async function deleteProject(projectId: string) {
 
 export async function setSegmentStatus(segmentId: string, status: "active" | "paused" | "proposed") {
   const [seg] = await db.update(schema.segments).set({ status }).where(eq(schema.segments.id, segmentId)).returning();
+  if (seg) await setSegmentCampaignActive(seg, status === "active");
   if (seg) await activity(seg.projectId, `${status === "active" ? "Activated" : status === "paused" ? "Paused" : "Reset"} segment: ${seg.name}`);
   refresh();
 }
@@ -251,11 +255,12 @@ export async function approveAllDrafts(projectId: string, segmentId: string | nu
 }
 
 export async function skipLead(leadId: string) {
-  await db.update(schema.leads).set({ status: "paused" }).where(eq(schema.leads.id, leadId));
+  const [lead] = await db.update(schema.leads).set({ status: "paused" }).where(eq(schema.leads.id, leadId)).returning();
+  if (lead) await removeFromInstantly(lead);
   await db
     .update(schema.messages)
     .set({ status: "cancelled" })
-    .where(and(eq(schema.messages.leadId, leadId), inArray(schema.messages.status, ["draft", "approved"])));
+    .where(and(eq(schema.messages.leadId, leadId), inArray(schema.messages.status, ["draft", "approved", "queued"])));
   refresh();
 }
 

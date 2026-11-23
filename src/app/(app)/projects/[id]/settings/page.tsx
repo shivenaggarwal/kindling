@@ -1,5 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import { env, sendVia } from "@/lib/config";
+import * as instantly from "@/lib/instantly/client";
 import { deleteProject, rerunAnalysis, updateProfile, updateProjectSettings } from "@/lib/actions";
 import { SubmitButton } from "@/components/client";
 import { Card, CardHeader, Field, Input, Textarea } from "@/components/ui";
@@ -14,6 +16,8 @@ export default async function ProjectSettingsPage({ params }: { params: Promise<
   const mailboxes = await db.select().from(schema.mailboxes);
   const s = project.settings;
   const p = project.profile;
+  const via = sendVia(s);
+  const instantlyAccounts = env.instantlyKey ? await instantly.listAccounts().catch(() => []) : [];
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -36,7 +40,41 @@ export default async function ProjectSettingsPage({ params }: { params: Promise<
         </Card>
 
         <Card>
-          <CardHeader title="Sending" description="Kindling sends one email at a time per mailbox, a few minutes apart, inside this window." />
+          <CardHeader title="Delivery" description="How emails reach the inbox." />
+          <div className="space-y-3 p-5">
+            {(
+              [
+                ["instantly", "Instantly: warmed mailboxes on separate domains", "High volume (hundreds to thousands a day), continuous warm-up, rotation. Recommended."],
+                ["gmail", "Gmail: your connected inbox", "Low volume (~30/day per inbox). Good for testing or warm intros."],
+              ] as const
+            ).map(([v, label, hint]) => (
+              <label key={v} className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 has-checked:border-accent has-checked:bg-accent-soft">
+                <input type="radio" name="sendVia" value={v} defaultChecked={via === v} className="mt-1 accent-[var(--accent)]" />
+                <span>
+                  <span className="block text-sm font-medium">{label}</span>
+                  <span className="block text-xs text-muted">{hint}{v === "instantly" && !env.instantlyKey ? " INSTANTLY_API_KEY isn't set yet." : ""}</span>
+                </span>
+              </label>
+            ))}
+            {instantlyAccounts.length ? (
+              <div>
+                <span className="mb-1.5 block text-xs font-medium">Instantly mailboxes for this project</span>
+                <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto">
+                  {instantlyAccounts.map((a) => (
+                    <label key={a.email} className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 font-mono text-xs has-checked:border-accent has-checked:bg-accent-soft">
+                      <input type="checkbox" name="instantlyAccounts" value={a.email} defaultChecked={(s.instantlyAccounts ?? []).includes(a.email)} className="accent-[var(--accent)]" />
+                      {a.email}
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-1 text-xs text-muted">None ticked = every warmed mailbox. Useful when several businesses share one Instantly workspace.</p>
+              </div>
+            ) : null}
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader title="Sending window" description="For Gmail, Kindling spaces sends inside this window. For Instantly, it becomes each campaign's schedule." />
           <div className="grid gap-4 p-5 md:grid-cols-3">
             <Field label="Timezone" hint="IANA name, e.g. America/New_York"><Input name="timezone" defaultValue={s.timezone} /></Field>
             <Field label="Window starts (hour)"><Input name="sendWindowStart" type="number" min={0} max={23} defaultValue={s.sendWindowStart} /></Field>
@@ -55,7 +93,7 @@ export default async function ProjectSettingsPage({ params }: { params: Promise<
             <Field label="Follow-up gaps (days)" hint="Days before follow-up 1, then follow-up 2"><Input name="followupDays" defaultValue={s.followupDays.join(", ")} /></Field>
             <Field label="Leads per batch"><Input name="leadsPerBatch" type="number" min={5} max={100} defaultValue={s.leadsPerBatch} /></Field>
             <div className="md:col-span-3">
-              <span className="mb-1.5 block text-xs font-medium">Send from</span>
+              <span className="mb-1.5 block text-xs font-medium">Gmail mailboxes to send from</span>
               {mailboxes.length === 0 ? (
                 <p className="text-sm text-muted">No mailboxes connected yet.</p>
               ) : (

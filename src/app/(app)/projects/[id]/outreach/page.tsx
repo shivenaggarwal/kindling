@@ -2,6 +2,8 @@ import Link from "next/link";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { localParts } from "@/lib/time";
+import { env, sendVia } from "@/lib/config";
+import * as instantly from "@/lib/instantly/client";
 import { approveAllDrafts, approveLead, regenerateSequence, retryMessage, skipLead } from "@/lib/actions";
 import { AutoRefresh, SubmitButton } from "@/components/client";
 import { Badge, Card, CardHeader, Empty, LinkButton, Notice, Select } from "@/components/ui";
@@ -40,8 +42,8 @@ export default async function OutreachPage({
 
   const [queue] = await db
     .select({
-      approvedFirst: sql<number>`count(*) filter (where ${schema.messages.status} = 'approved' and ${schema.messages.step} = 0)::int`,
-      approvedFollow: sql<number>`count(*) filter (where ${schema.messages.status} = 'approved' and ${schema.messages.step} > 0 and ${schema.messages.scheduledAt} is not null)::int`,
+      approvedFirst: sql<number>`count(*) filter (where ${schema.messages.status} in ('approved', 'queued') and ${schema.messages.step} = 0)::int`,
+      approvedFollow: sql<number>`count(*) filter (where (${schema.messages.status} = 'queued' or (${schema.messages.status} = 'approved' and ${schema.messages.scheduledAt} is not null)) and ${schema.messages.step} > 0)::int`,
       failed: sql<number>`count(*) filter (where ${schema.messages.status} = 'failed')::int`,
     })
     .from(schema.messages)
@@ -64,6 +66,22 @@ export default async function OutreachPage({
   const writing = await db.query.leads.findFirst({ where: and(eq(schema.leads.projectId, id), inArray(schema.leads.status, ["new", "drafting"])) });
 
   const s = project.settings;
+  const via = sendVia(s);
+  let instantlyInfo: { ready: number; warming: number; capacity: number; error?: string } | null = null;
+  if (via === "instantly" && env.instantlyKey) {
+    try {
+      const all = await instantly.listAccounts();
+      const allowed = s.instantlyAccounts ?? [];
+      const ready = all.filter((a) => instantly.isReady(a) && (!allowed.length || allowed.includes(a.email)));
+      instantlyInfo = {
+        ready: ready.length,
+        warming: all.filter((a) => !instantly.isReady(a) && a.warmup_status === 1).length,
+        capacity: ready.reduce((n, a) => n + Math.min(a.daily_limit ?? 30, 50), 0),
+      };
+    } catch (e) {
+      instantlyInfo = { ready: 0, warming: 0, capacity: 0, error: e instanceof Error ? e.message : String(e) };
+    }
+  }
   const now = localParts(new Date(), s.timezone);
   const inWindow = s.sendDays.includes(now.weekday) && now.hour >= s.sendWindowStart && now.hour < s.sendWindowEnd;
   const pausedSegs = segs.filter((x) => x.status !== "active").map((x) => x.id);
@@ -89,7 +107,11 @@ export default async function OutreachPage({
         <Card className="p-4">
           <div className="text-xs text-muted">Sent in last 24h</div>
           <div className="num mt-1 font-display text-3xl">{sentToday[0]?.n ?? 0}</div>
-          <div className="text-xs text-muted">limit {mailboxes.reduce((a, m) => a + m.dailyLimit, 0)}/day across {mailboxes.length} mailbox{mailboxes.length === 1 ? "" : "es"}</div>
+          <div className="text-xs text-muted">
+            {via === "instantly"
+              ? `capacity ${instantlyInfo?.capacity ?? 0}/day across ${instantlyInfo?.ready ?? 0} warmed mailbox${instantlyInfo?.ready === 1 ? "" : "es"}`
+              : `limit ${mailboxes.reduce((a, m) => a + m.dailyLimit, 0)}/day across ${mailboxes.length} mailbox${mailboxes.length === 1 ? "" : "es"}`}
+          </div>
         </Card>
         <Card className="p-4">
           <div className="text-xs text-muted">Sending window</div>
@@ -103,7 +125,25 @@ export default async function OutreachPage({
         </Card>
       </div>
 
-      {mailboxes.length === 0 ? (
+      {via === "instantly" ? (
+        !env.instantlyKey ? (
+          <Notice tone="warning">
+            This project sends through Instantly, but INSTANTLY_API_KEY isn&apos;t set. See <Link href="/infrastructure" className="font-medium underline">Sending infrastructure</Link>.
+          </Notice>
+        ) : instantlyInfo?.error ? (
+          <Notice tone="danger">Instantly: {instantlyInfo.error}</Notice>
+        ) : (instantlyInfo?.ready ?? 0) === 0 ? (
+          <Notice tone="warning">
+            No warmed mailboxes yet{instantlyInfo?.warming ? ` (${instantlyInfo.warming} still warming up)` : ""}. Approved emails wait until one is ready.{" "}
+            <Link href="/infrastructure" className="font-medium underline">Get pre-warmed mailboxes</Link>
+          </Notice>
+        ) : (
+          <Notice tone="success">
+            Sending through Instantly from {instantlyInfo?.ready} warmed mailbox{instantlyInfo?.ready === 1 ? "" : "es"}, rotated automatically. Approved
+            sequences are handed over within 5 minutes and follow Instantly&apos;s schedule for each segment.
+          </Notice>
+        )
+      ) : mailboxes.length === 0 ? (
         <Notice tone="info">
           No active mailbox. <Link href="/settings" className="font-medium underline">Connect Gmail</Link> and approved emails will start sending.
         </Notice>

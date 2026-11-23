@@ -52,6 +52,8 @@ export const segments = pgTable(
     status: text("status").notNull().default("proposed"), // proposed | active | paused
     performance: text("performance").notNull().default("testing"), // testing | working | scaling | underperforming
     findingLeads: boolean("finding_leads").notNull().default(false),
+    /** Instantly campaign that sends this segment's sequences (when sending via Instantly). */
+    instantlyCampaignId: text("instantly_campaign_id"),
     createdAt: createdAt(),
   },
   (t) => [index("segments_project_idx").on(t.projectId)],
@@ -96,6 +98,7 @@ export const leads = pgTable(
     // new | drafting | drafted | contacted | replied | interested | meeting | not_interested | bounced | unsubscribed | paused | error
     status: text("status").notNull().default("new"),
     lastContactedAt: timestamp("last_contacted_at", { withTimezone: true }),
+    instantlyLeadId: text("instantly_lead_id"),
     createdAt: createdAt(),
   },
   (t) => [
@@ -146,6 +149,14 @@ export const messages = pgTable(
     // For inbound messages: the AI's read of the reply. For reply drafts: the decision behind them.
     decision: jsonb("decision").$type<ReplyDecision>(),
     handled: boolean("handled").notNull().default(false),
+    /** gmail = sent from a connected Gmail mailbox; instantly = sent through Instantly's warmed mailboxes. */
+    provider: text("provider").notNull().default("gmail"),
+    /** Instantly email id (for replies: the id to reply to). */
+    externalId: text("external_id"),
+    /** Instantly sending account that sent/received this email. */
+    externalAccount: text("external_account"),
+    /** For reply drafts: the inbound message being answered. */
+    inReplyToId: uuid("in_reply_to_id"),
     error: text("error"),
     createdAt: createdAt(),
   },
@@ -154,6 +165,7 @@ export const messages = pgTable(
     index("messages_lead_idx").on(t.leadId),
     index("messages_thread_idx").on(t.gmailThreadId),
     uniqueIndex("messages_gmail_id_uq").on(t.gmailMessageId),
+    uniqueIndex("messages_external_id_uq").on(t.externalId),
     index("messages_status_sched_idx").on(t.status, t.scheduledAt),
   ],
 );
@@ -233,6 +245,13 @@ export const jobs = pgTable(
   },
   (t) => [index("jobs_pick_idx").on(t.status, t.runAt)],
 );
+
+/** Small key/value store for sync cursors and integration state. */
+export const kv = pgTable("kv", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").$type<unknown>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
 
 /** Short-lived named leases so overlapping scheduler runs don't step on each other. */
 export const leases = pgTable("leases", {

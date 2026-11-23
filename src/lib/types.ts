@@ -65,6 +65,10 @@ export const SegmentsSchema = z.object({
 });
 
 export type ProjectSettings = {
+  /** How emails go out. Defaults to Instantly when INSTANTLY_API_KEY is set. */
+  sendVia?: "instantly" | "gmail";
+  /** Instantly mailboxes this project may send from (empty = all ready mailboxes). */
+  instantlyAccounts?: string[];
   senderName: string;
   senderTitle: string;
   signature: string;

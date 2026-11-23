@@ -12,6 +12,7 @@ export const env = {
   appPassword: process.env.APP_PASSWORD ?? "",
   appSecret: process.env.APP_SECRET ?? "",
   apolloKey: process.env.APOLLO_API_KEY ?? "",
+  instantlyKey: process.env.INSTANTLY_API_KEY ?? "",
   hunterKey: process.env.HUNTER_API_KEY ?? "",
   placesKey: process.env.GOOGLE_PLACES_API_KEY ?? "",
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
@@ -28,5 +29,12 @@ export const integrations = () => ({
   apollo: Boolean(env.apolloKey),
   hunter: Boolean(env.hunterKey),
   places: Boolean(env.placesKey),
+  instantly: Boolean(env.instantlyKey),
   google: Boolean(env.googleClientId && env.googleClientSecret),
 });
+
+import type { ProjectSettings } from "./types";
+
+/** Which delivery path a project uses. */
+export const sendVia = (s: ProjectSettings): "instantly" | "gmail" =>
+  s.sendVia ?? (env.instantlyKey ? "instantly" : "gmail");
