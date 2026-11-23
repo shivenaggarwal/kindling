@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+/* Kindling — warm paper + ember accent. */
+:root {
+  --bg: #f6f4ef;
+  --surface: #ffffff;
+  --surface-2: #f0ece4;
+  --border: #e4ded3;
+  --border-strong: #d3cbbd;
+  --text: #1c1917;
+  --muted: #78716c;
+  --faint: #a8a29e;
+  --accent: #e2531a;
+  --accent-ink: #ffffff;
+  --accent-soft: #fde9dd;
+  --success: #15803d;
+  --success-soft: #dcfce7;
+  --warning: #b45309;
+  --warning-soft: #fef3c7;
+  --danger: #b91c1c;
+  --danger-soft: #fee2e2;
+  --ai: #6d28d9;
+  --ai-soft: #ede9fe;
+  --info: #1d4ed8;
+  --info-soft: #dbeafe;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #100f0d;
+    --surface: #181614;
+    --surface-2: #211e1b;
+    --border: #2d2925;
+    --border-strong: #3d3832;
+    --text: #f4f1ec;
+    --muted: #a8a29e;
+    --faint: #6f6964;
+    --accent: #fb7537;
+    --accent-ink: #1a0b03;
+    --accent-soft: #3a1d0f;
+    --success: #4ade80;
+    --success-soft: #0f2e1a;
+    --warning: #fbbf24;
+    --warning-soft: #33250a;
+    --danger: #f87171;
+    --danger-soft: #3a1414;
+    --ai: #a78bfa;
+    --ai-soft: #251a40;
+    --info: #60a5fa;
+    --info-soft: #11203d;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-ai: var(--ai);
+  --color-ai-soft: var(--ai-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-instrument-serif), Georgia, serif;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes ember-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.85);
+  }
+}
+.ember-dot {
+  animation: ember-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes feed-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.feed-in {
+  animation: feed-in 0.35s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ember-dot,
+  .feed-in {
+    animation: none;
+  }
+}
