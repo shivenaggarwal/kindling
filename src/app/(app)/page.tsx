@@ -57,7 +57,7 @@ export default async function Home() {
         <ol className="overflow-hidden rounded-[22px] bg-surface ring-1 ring-[var(--card-ring)]">
           {STEPS.map(([title, body], i) => (
             <li key={title} className="flex gap-5 border-b border-border px-5 py-4 last:border-b-0">
-              <MatrixNumber value={i + 1} size={16} className="w-6 shrink-0 pt-1 text-faint" />
+              <MatrixNumber value={i + 1} size={16} className="w-6 shrink-0 self-start pt-[5px] text-faint" />
               <div>
                 <div className="text-[15px] font-semibold tracking-[-0.01em]">{title}</div>
                 <p className="mt-0.5 text-[14px] leading-snug text-muted">{body}</p>

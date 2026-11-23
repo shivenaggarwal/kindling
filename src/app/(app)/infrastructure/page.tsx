@@ -63,7 +63,7 @@ export default async function InfrastructurePage() {
             </>,
           ].map((step, i) => (
             <li key={i} className="flex gap-5 border-b border-border px-5 py-4 text-[14px] leading-snug last:border-b-0">
-              <MatrixNumber value={i + 1} size={16} className="w-5 shrink-0 pt-0.5 text-faint" />
+              <MatrixNumber value={i + 1} size={16} className="w-5 shrink-0 self-start pt-[3px] text-faint" />
               <span className="pt-0.5">{step}</span>
             </li>
           ))}
