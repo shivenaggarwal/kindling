@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { and, eq, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { toggleAutopilot } from "@/lib/actions";
-import { Tabs, SubmitButton } from "@/components/client";
+import { SwitchSubmit, Tabs } from "@/components/client";
 import { Badge } from "@/components/ui";
 
 export default async function ProjectLayout({ children, params }: { children: React.ReactNode; params: Promise<{ id: string }> }) {
@@ -21,28 +21,34 @@ export default async function ProjectLayout({ children, params }: { children: Re
   const base = `/projects/${id}`;
   return (
     <div>
-      <div className="mb-1 flex flex-wrap items-start justify-between gap-4">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
         <div className="min-w-0">
-          <div className="flex items-center gap-2.5">
-            <h1 className="truncate font-display text-[36px] leading-tight tracking-tight">{project.name}</h1>
-            {project.status === "analyzing" ? <Badge tone="ai">Analyzing…</Badge> : null}
+          <a
+            href={`https://${project.domain}`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[14px] font-medium text-muted transition-colors hover:text-text"
+            title="Open the website"
+          >
+            {project.domain}
+          </a>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <h1 className="truncate text-[32px] font-bold leading-[1.1] tracking-[-0.035em] md:text-[38px]">{project.name}</h1>
+            {project.status === "analyzing" ? <Badge tone="ai">Reading the website</Badge> : null}
             {project.status === "error" ? <Badge tone="danger">Needs attention</Badge> : null}
           </div>
-          <a href={`https://${project.domain}`} target="_blank" rel="noreferrer" className="text-sm text-muted hover:text-accent">
-            {project.domain} ↗
-          </a>
         </div>
-        <form action={toggleAutopilot.bind(null, id)} className="flex items-center gap-3">
-          <div className="text-right text-xs leading-tight text-muted">
-            <div className="font-medium text-text">Autopilot {project.autopilot ? "on" : "off"}</div>
-            <div>{project.autopilot ? "Sends, replies and books without asking" : "You approve emails and replies"}</div>
+
+        <form action={toggleAutopilot.bind(null, id)} className="flex items-center gap-3.5 rounded-[18px] bg-surface py-2.5 pr-3 pl-4 ring-1 ring-[var(--card-ring)]">
+          <div className="text-[13px] leading-tight">
+            <div className="font-semibold">Autopilot</div>
+            <div className="mt-0.5 text-muted">{project.autopilot ? "Sends, replies and books on its own" : "You approve every email"}</div>
           </div>
-          <SubmitButton variant={project.autopilot ? "primary" : "secondary"} size="sm" pendingText="…">
-            {project.autopilot ? "Turn off" : "Turn on"}
-          </SubmitButton>
+          <SwitchSubmit on={project.autopilot} label="Autopilot" />
         </form>
       </div>
-      <div className="mb-7 border-b border-border">
+
+      <div className="mb-8">
         <Tabs
           base={base}
           tabs={[
@@ -51,7 +57,7 @@ export default async function ProjectLayout({ children, params }: { children: Re
             { href: "/leads", label: "Leads" },
             { href: "/outreach", label: "Outreach", count: counts?.drafts ?? 0 },
             { href: "/inbox", label: "Inbox", count: counts?.replies ?? 0 },
-            { href: "/campaigns", label: "Campaigns" },
+            { href: "/campaigns", label: "Results" },
             { href: "/settings", label: "Settings" },
           ]}
         />

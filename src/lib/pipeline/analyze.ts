@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "../db";
-import { runStructured } from "../ai/claude";
+import { runStructured } from "../ai";
 import { activity } from "../log";
 import { enqueue } from "../jobs/queue";
 import { crawlSite, normalizeDomain } from "../sources/site";

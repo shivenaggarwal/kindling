@@ -33,15 +33,17 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="space-y-5">
       <AutoRefresh active={lead.status === "new" || lead.status === "drafting"} />
-      <Link href={`/projects/${id}/leads`} className="text-sm text-muted hover:text-text">← All leads</Link>
+      <Link href={`/projects/${id}/leads`} className="inline-flex items-center gap-1 text-[14px] font-medium text-muted transition-colors hover:text-text">
+        <span aria-hidden>‹</span> Leads
+      </Link>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
         <div className="min-w-0 space-y-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="font-display text-3xl">{name}</h2>
-              <p className="text-sm text-muted">
-                {lead.title ?? "Unknown title"} · {company?.name ?? "—"}
+              <h2 className="text-[28px] font-bold leading-tight tracking-[-0.03em]">{name}</h2>
+              <p className="mt-1 text-[15px] text-muted">
+                {[lead.title, company?.name].filter(Boolean).join(" at ") || "Unknown title"}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -64,8 +66,8 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           </div>
 
           {lead.status === "new" || lead.status === "drafting" ? (
-            <Card className="p-5 text-sm text-muted">
-              <span className="ember-dot mr-2 inline-block size-2 rounded-full bg-accent" />
+            <Card className="flex items-center gap-3 p-5 text-[14px]">
+              <span className="led-live inline-block size-2 shrink-0 rounded-full bg-signal" />
               Researching {company?.domain ?? "the company"} and writing a personal sequence…
             </Card>
           ) : null}
@@ -80,26 +82,26 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
                     : "Approved. Sends inside your sending window. Follow-ups stop automatically on reply."
                 }
               />
-              <div className="divide-y divide-border">
+              <div className="divide-y divide-border border-t border-border">
                 {sequence.map((m) => (
-                  <form key={m.id} action={updateMessage.bind(null, m.id)} className="space-y-2 p-5">
+                  <form key={m.id} action={updateMessage.bind(null, m.id)} className="space-y-2.5 p-5">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold">{STEP_LABEL[m.step] ?? `Step ${m.step + 1}`}</span>
+                        <span className="text-[14px] font-semibold">{STEP_LABEL[m.step] ?? `Step ${m.step + 1}`}</span>
                         <Badge tone={m.status === "approved" || m.status === "queued" ? "success" : m.status === "failed" ? "danger" : m.status === "cancelled" ? "neutral" : "info"}>
-                          {m.status === "queued" ? "queued in Instantly" : m.status}
+                          {{ draft: "Draft", approved: "Approved", queued: "Queued in Instantly", sending: "Sending", failed: "Failed", cancelled: "Cancelled" }[m.status] ?? m.status}
                         </Badge>
                         {m.scheduledAt && m.status === "approved" ? (
-                          <span className="text-xs text-muted">due {m.scheduledAt.toLocaleString()}</span>
+                          <span className="text-[12px] text-muted">Due {m.scheduledAt.toLocaleString()}</span>
                         ) : null}
                       </div>
                       {m.status === "failed" ? (
                         <SubmitButton size="sm" variant="secondary" formAction={retryMessage.bind(null, m.id)}>Retry</SubmitButton>
                       ) : null}
                     </div>
-                    {m.error ? <p className="text-xs text-danger">{m.error}</p> : null}
+                    {m.error ? <p className="text-[13px] text-danger">{m.error}</p> : null}
                     {m.step === 0 ? <Input name="subject" defaultValue={m.subject} aria-label="Subject" /> : null}
-                    <Textarea name="body" defaultValue={m.body} rows={Math.min(14, Math.max(4, m.body.split("\n").length + 2))} disabled={!["draft", "approved", "failed"].includes(m.status)} />
+                    <Textarea name="body" defaultValue={m.body} className="min-h-28 [field-sizing:content]" rows={Math.min(16, Math.max(5, Math.ceil(m.body.length / 80) + m.body.split("\n").length))} disabled={!["draft", "approved", "failed"].includes(m.status)} />
                     {["draft", "approved", "failed"].includes(m.status) ? (
                       <div className="flex justify-end">
                         <SubmitButton size="sm" variant="ghost" pendingText="Saving…">Save edits</SubmitButton>
@@ -109,8 +111,8 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
                 ))}
               </div>
               <details className="border-t border-border">
-                <summary className="cursor-pointer list-none px-5 py-3 text-xs text-muted hover:text-text">Preview with signature ▸</summary>
-                <pre className="whitespace-pre-wrap px-5 pb-5 font-sans text-sm leading-relaxed">
+                <summary className="cursor-pointer list-none px-5 py-3.5 text-[13px] font-medium text-muted transition-colors hover:text-text [&::-webkit-details-marker]:hidden">Preview with signature</summary>
+                <pre className="mx-5 mb-5 whitespace-pre-wrap rounded-[16px] bg-surface-2 p-4 font-sans text-[14px] leading-relaxed">
                   {`Subject: ${sequence[0]?.subject}\n\n${renderBody(sequence[0]?.body ?? "", project.settings)}`}
                 </pre>
               </details>
@@ -120,18 +122,30 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           {history.length ? (
             <Card>
               <CardHeader title="Conversation" />
-              <div className="divide-y divide-border">
+              <div className="space-y-3 px-5 pb-5">
                 {history.map((m) => (
-                  <div key={m.id} className={m.direction === "inbound" ? "bg-accent-soft/40 p-5" : "p-5"}>
-                    <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted">
+                  <div
+                    key={m.id}
+                    className={
+                      m.direction === "inbound"
+                        ? "mr-auto max-w-[92%] rounded-[18px] rounded-bl-[6px] bg-surface-2 p-4"
+                        : "ml-auto max-w-[92%] rounded-[18px] rounded-br-[6px] border border-border p-4"
+                    }
+                  >
+                    <div className="mb-2 flex flex-wrap items-center gap-2 text-[12px] text-muted">
                       <span className="font-medium text-text">{m.direction === "inbound" ? name : `You (${m.fromEmail ?? ""})`}</span>
                       <span>{(m.sentAt ?? m.createdAt).toLocaleString()}</span>
                       {m.direction === "inbound" ? <ReplyBadge category={m.decision?.category} /> : null}
                       {m.kind === "sequence" ? <Badge>{STEP_LABEL[m.step]}</Badge> : null}
                     </div>
-                    {m.step === 0 && m.direction === "outbound" && m.kind === "sequence" ? <div className="mb-1 text-sm font-medium">{m.subject}</div> : null}
-                    <div className="whitespace-pre-wrap text-sm leading-relaxed">{m.body}</div>
-                    {m.decision?.summary && m.direction === "inbound" ? <p className="mt-2 text-xs text-ai">AI read: {m.decision.summary}</p> : null}
+                    {m.step === 0 && m.direction === "outbound" && m.kind === "sequence" ? <div className="mb-1 text-[14px] font-semibold">{m.subject}</div> : null}
+                    <div className="whitespace-pre-wrap text-[14px] leading-relaxed">{m.body}</div>
+                    {m.decision?.summary && m.direction === "inbound" ? (
+                      <p className="mt-3 flex gap-2 border-t border-border pt-2.5 text-[13px] text-muted">
+                        <span className="mt-[6px] size-1.5 shrink-0 rounded-full bg-signal" />
+                        {m.decision.summary}
+                      </p>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -140,34 +154,37 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         </div>
 
         <div className="space-y-4">
-          <Card className="space-y-3 p-5 text-sm">
+          <Card className="space-y-4 p-5 text-[14px]">
             <div className="flex flex-wrap gap-1.5">
               <LeadStatus status={lead.status} />
               <SourceBadge source={lead.source} />
             </div>
             <div>
-              <div className="text-xs text-muted">Email</div>
-              <div className="break-all font-mono text-xs">{lead.email}</div>
-              <div className="mt-1"><EmailStatus status={lead.emailStatus} /></div>
+              <div className="text-[12px] font-semibold text-muted">Email</div>
+              <div className="mt-0.5 break-all">{lead.email}</div>
+              <div className="mt-1.5"><EmailStatus status={lead.emailStatus} /></div>
             </div>
             {lead.linkedinUrl ? (
-              <a href={lead.linkedinUrl} target="_blank" rel="noreferrer" className="block text-xs text-accent hover:underline">LinkedIn ↗</a>
+              <a href={lead.linkedinUrl} target="_blank" rel="noreferrer" className="block text-[13px] font-medium underline underline-offset-2">LinkedIn profile</a>
             ) : null}
             {segment ? (
               <div>
-                <div className="text-xs text-muted">Segment</div>
-                <div>{segment.name}</div>
+                <div className="text-[12px] font-semibold text-muted">Segment</div>
+                <div className="mt-0.5">{segment.name}</div>
               </div>
             ) : null}
             {meetings.map((mt) => (
-              <div key={mt.id} className="rounded-lg bg-success-soft p-3 text-success">
-                <div className="text-xs font-semibold">Meeting booked</div>
-                <div className="text-xs">{mt.startAt.toLocaleString()}</div>
-                {mt.meetLink ? <a href={mt.meetLink} className="text-xs underline" target="_blank" rel="noreferrer">Join link</a> : null}
+              <div key={mt.id} className="rounded-[14px] bg-success-soft p-3.5">
+                <div className="flex items-center gap-2 text-[13px] font-semibold">
+                  <span className="size-1.5 rounded-full bg-success" />
+                  Meeting booked
+                </div>
+                <div className="mt-1 text-[13px]">{mt.startAt.toLocaleString()}</div>
+                {mt.meetLink ? <a href={mt.meetLink} className="mt-1 inline-block text-[13px] font-medium underline underline-offset-2" target="_blank" rel="noreferrer">Join call</a> : null}
               </div>
             ))}
             {["replied", "interested", "contacted"].includes(lead.status) ? (
-              <div className="flex flex-wrap gap-1.5 border-t border-border pt-3">
+              <div className="flex flex-wrap gap-2 border-t border-border pt-4">
                 <form action={setLeadStatus.bind(null, leadId, "meeting")}><SubmitButton size="sm" variant="secondary">Mark meeting</SubmitButton></form>
                 <form action={setLeadStatus.bind(null, leadId, "not_interested")}><SubmitButton size="sm" variant="ghost">Not interested</SubmitButton></form>
               </div>
@@ -175,23 +192,23 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           </Card>
 
           {company ? (
-            <Card className="space-y-3 p-5 text-sm">
-              <div className="flex items-center gap-2">
+            <Card className="space-y-3 p-5 text-[14px]">
+              <div className="flex items-center gap-2.5">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={`https://www.google.com/s2/favicons?domain=${company.domain}&sz=32`} alt="" className="size-4 rounded" />
-                <a href={`https://${company.domain}`} target="_blank" rel="noreferrer" className="font-medium hover:text-accent">{company.name} ↗</a>
+                <a href={`https://${company.domain}`} target="_blank" rel="noreferrer" className="font-semibold underline-offset-2 hover:underline">{company.name}</a>
               </div>
-              {company.location ? <div className="text-xs text-muted">{company.location}</div> : null}
-              {company.phone ? <div className="text-xs text-muted">{company.phone}</div> : null}
+              {company.location ? <div className="text-[13px] text-muted">{company.location}</div> : null}
+              {company.phone ? <div className="text-[13px] text-muted">{company.phone}</div> : null}
               {company.research.whyFit ? (
                 <div>
-                  <div className="text-xs text-muted">Why they fit</div>
-                  <p className="mt-0.5">{company.research.whyFit}</p>
+                  <div className="text-[12px] font-semibold text-muted">Why they fit</div>
+                  <p className="mt-0.5 leading-snug">{company.research.whyFit}</p>
                 </div>
               ) : null}
               {company.research.evidenceUrl ? (
-                <a href={company.research.evidenceUrl} target="_blank" rel="noreferrer" className="block truncate text-xs text-accent hover:underline">
-                  Source ↗
+                <a href={company.research.evidenceUrl} target="_blank" rel="noreferrer" className="block truncate text-[13px] font-medium underline underline-offset-2">
+                  Where this came from
                 </a>
               ) : null}
               <div className="flex flex-wrap gap-1">{company.sources.map((s) => <SourceBadge key={s} source={s} />)}</div>

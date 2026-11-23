@@ -1,8 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { ApiError as GeminiError } from "@google/genai";
 import { eq, sql } from "drizzle-orm";
 import { db, schema } from "../db";
 import type { Job } from "../db/schema";
-import { ClaudeRefusal } from "../ai/claude";
+import { AiRefusal } from "../ai";
 import { activity } from "../log";
 import { analyzeProject } from "../pipeline/analyze";
 import { proposeSegments } from "../pipeline/segments";
@@ -50,8 +51,9 @@ export async function claim(opts: { allowLong?: boolean } = {}): Promise<Job | n
 
 /** Errors that won't fix themselves on retry (bad credentials, invalid request, refusals). */
 function isPermanent(e: unknown) {
-  if (e instanceof ClaudeRefusal) return true;
+  if (e instanceof AiRefusal) return true;
   if (e instanceof Anthropic.APIError && e.status && [400, 401, 403, 404].includes(e.status)) return true;
+  if (e instanceof GeminiError && [400, 401, 403, 404].includes(e.status)) return true;
   return e instanceof Error && /resolve authentication|API key|APP_SECRET/i.test(e.message);
 }
 
@@ -59,6 +61,12 @@ function friendly(e: unknown) {
   const msg = e instanceof Error ? e.message : String(e);
   if (/resolve authentication/i.test(msg)) return "No Claude API key. Add ANTHROPIC_API_KEY to .env and restart.";
   if (e instanceof Anthropic.AuthenticationError) return "Claude rejected the API key. Check ANTHROPIC_API_KEY in .env.";
+  if (e instanceof GeminiError) {
+    if (/API key not valid|API_KEY_INVALID/i.test(msg)) return "Gemini rejected the API key. Check GEMINI_API_KEY.";
+    if (/SERVICE_BLOCKED|PERMISSION_DENIED/i.test(msg)) return "This Gemini key isn't allowed to call the model. Check the key's API restrictions.";
+    if (e.status === 404) return `Gemini model not found (${msg.slice(0, 160)}). Check GEMINI_MODEL.`;
+    if (e.status === 429) return "Gemini is rate-limited right now. Kindling will retry.";
+  }
   return msg;
 }
 

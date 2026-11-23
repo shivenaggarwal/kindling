@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "../db";
-import { runStructured } from "../ai/claude";
+import { runStructured } from "../ai";
 import { fetchPage } from "../sources/site";
 import { SequenceSchema, type ProjectSettings } from "../types";
 import { getProject, getSegment, projectContext, segmentContext, untrusted } from "./context";

@@ -14,7 +14,7 @@ export async function activity(projectId: string, message: string, level: Level 
 export async function recordUsage(e: {
   projectId?: string | null;
   segmentId?: string | null;
-  provider: "anthropic" | "apollo" | "hunter" | "places";
+  provider: "anthropic" | "gemini" | "apollo" | "hunter" | "places";
   operation: string;
   units: number;
   costUsd: number;

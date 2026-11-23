@@ -5,7 +5,7 @@ import { segmentStats } from "@/lib/pipeline/stats";
 import { createSegment, deleteSegment, findLeadsForSegment, setSegmentStatus, updateSegment } from "@/lib/actions";
 import { AutoRefresh, SubmitButton } from "@/components/client";
 import { PerfBadge } from "@/components/status";
-import { Badge, Card, Empty, Field, FitBar, Input, Textarea } from "@/components/ui";
+import { Badge, Card, Empty, Field, FitBar, Input, MatrixNumber, Textarea } from "@/components/ui";
 
 export const metadata = { title: "Segments" };
 
@@ -32,9 +32,9 @@ export default async function SegmentsPage({ params }: { params: Promise<{ id: s
     <div className="space-y-5">
       <AutoRefresh active={busy} />
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <p className="max-w-2xl text-sm text-muted">
+        <p className="max-w-[68ch] text-[14px] leading-snug text-muted">
           Each segment is a group of companies likely to buy, with the people to reach. Activate the ones you like and
-          find leads. Lead sources in use: <span className="text-text">{sources.join(", ")}</span>.
+          find leads. Searching with <span className="font-medium text-text">{sources.join(", ")}</span>.
         </p>
       </div>
 
@@ -51,30 +51,30 @@ export default async function SegmentsPage({ params }: { params: Promise<{ id: s
           const st = stats.get(s.id);
           const t = s.targeting;
           return (
-            <Card key={s.id} className={s.status === "proposed" ? "border-dashed" : undefined}>
+            <Card key={s.id} className={s.status === "proposed" ? "border border-dashed border-border-strong bg-surface/70" : "overflow-hidden"}>
               <div className="flex flex-wrap items-start justify-between gap-4 p-5">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-[15px] font-semibold">{s.name}</h3>
+                    <h3 className="text-[17px] font-semibold tracking-[-0.02em]">{s.name}</h3>
                     <PerfBadge performance={s.performance} status={s.status} />
-                    {s.findingLeads ? <Badge tone="ai"><span className="ember-dot inline-block size-1.5 rounded-full bg-current" />Finding leads</Badge> : null}
+                    {s.findingLeads ? <Badge tone="ai">Finding leads</Badge> : null}
                   </div>
-                  <p className="mt-1 text-sm text-muted">{s.description}</p>
+                  <p className="mt-1 max-w-[70ch] text-[14px] leading-snug text-muted">{s.description}</p>
                 </div>
-                <div className="flex flex-col items-end gap-1">
-                  <span className="text-[11px] text-muted">Fit score</span>
+                <div className="flex flex-col items-end gap-1.5">
+                  <span className="text-[12px] font-medium text-muted">Fit</span>
                   <FitBar value={s.fitScore} />
                 </div>
               </div>
 
-              <div className="grid gap-4 border-t border-border px-5 py-4 text-sm md:grid-cols-2">
+              <div className="grid gap-5 border-t border-border px-5 py-4 text-[14px] leading-snug md:grid-cols-2">
                 <div>
-                  <div className="text-xs font-medium text-muted">Why they buy</div>
+                  <div className="text-[13px] font-semibold text-muted">Why they buy</div>
                   <p className="mt-1">{s.rationale}</p>
                 </div>
                 <div>
-                  <div className="text-xs font-medium text-muted">Opening angle</div>
-                  <p className="mt-1">{s.angle || "—"}</p>
+                  <div className="text-[13px] font-semibold text-muted">Opening angle</div>
+                  <p className="mt-1">{s.angle || "Not set"}</p>
                 </div>
               </div>
 
@@ -84,16 +84,25 @@ export default async function SegmentsPage({ params }: { params: Promise<{ id: s
                 {t.placesQueries.length && ints.places ? <Badge tone="neutral">{t.placesQueries.length} Maps queries</Badge> : null}
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-surface-2/40 px-5 py-3">
-                <div className="num flex gap-4 text-xs text-muted">
-                  <span><b className="text-text">{st?.leads ?? 0}</b> leads</span>
-                  <span><b className="text-text">{st?.contacted ?? 0}</b> contacted</span>
-                  <span><b className="text-text">{st?.positive ?? 0}</b> warm</span>
-                  <span><b className="text-text">{st?.meetings ?? 0}</b> meetings</span>
-                </div>
+              <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border px-5 py-3.5">
+                <dl className="flex gap-6">
+                  {(
+                    [
+                      ["Leads", st?.leads],
+                      ["Contacted", st?.contacted],
+                      ["Warm", st?.positive],
+                      ["Meetings", st?.meetings],
+                    ] as const
+                  ).map(([k, v]) => (
+                    <div key={k}>
+                      <dd><MatrixNumber value={v ?? 0} size={14} /></dd>
+                      <dt className="mt-1 text-[11px] text-muted">{k}</dt>
+                    </div>
+                  ))}
+                </dl>
                 <div className="flex flex-wrap items-center gap-2">
                   <form action={findLeadsForSegment.bind(null, s.id)} className="flex items-center gap-1.5">
-                    <Input name="count" type="number" min={5} max={100} defaultValue={project.settings.leadsPerBatch} className="h-7 w-16 text-xs" aria-label="How many leads" />
+                    <Input name="count" type="number" min={5} max={100} defaultValue={project.settings.leadsPerBatch} className="h-8 w-[68px] rounded-full text-center text-[13px]" aria-label="How many leads" />
                     <SubmitButton size="sm" variant={s.status === "proposed" ? "primary" : "secondary"} pendingText="Queued…">
                       {s.status === "proposed" ? "Activate & find leads" : "Find more leads"}
                     </SubmitButton>
@@ -111,11 +120,11 @@ export default async function SegmentsPage({ params }: { params: Promise<{ id: s
               </div>
 
               <details className="group border-t border-border">
-                <summary className="cursor-pointer list-none px-5 py-2.5 text-xs text-muted hover:text-text">
-                  <span className="group-open:hidden">Edit targeting ▸</span>
-                  <span className="hidden group-open:inline">Hide ▾</span>
+                <summary className="cursor-pointer list-none px-5 py-3 text-[13px] font-medium text-muted transition-colors hover:text-text [&::-webkit-details-marker]:hidden">
+                  <span className="group-open:hidden">Edit targeting</span>
+                  <span className="hidden group-open:inline">Hide targeting</span>
                 </summary>
-                <form action={updateSegment.bind(null, s.id)} className="grid gap-3 px-5 pb-5 md:grid-cols-2">
+                <form action={updateSegment.bind(null, s.id)} className="grid gap-4 px-5 pb-5 md:grid-cols-2">
                   <Field label="Name"><Input name="name" defaultValue={s.name} /></Field>
                   <Field label="Decision-maker titles" hint="Comma separated, most important first"><Input name="titles" defaultValue={t.titles.join(", ")} /></Field>
                   <Field label="Description" className="md:col-span-2"><Textarea name="description" rows={2} defaultValue={s.description} /></Field>
@@ -139,8 +148,13 @@ export default async function SegmentsPage({ params }: { params: Promise<{ id: s
 
       <Card>
         <details>
-          <summary className="cursor-pointer list-none px-5 py-4 text-sm font-medium hover:text-accent">+ Add your own segment</summary>
-          <form action={createSegment.bind(null, id)} className="grid gap-3 border-t border-border p-5 md:grid-cols-2">
+          <summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-4 text-[15px] font-semibold [&::-webkit-details-marker]:hidden">
+            <span className="grid size-6 place-items-center rounded-full bg-surface-2 text-[15px] leading-none" aria-hidden>
+              +
+            </span>
+            Add your own segment
+          </summary>
+          <form action={createSegment.bind(null, id)} className="grid gap-4 border-t border-border p-5 md:grid-cols-2">
             <Field label="Name"><Input name="name" required placeholder="e.g. Boutique hotels in London" /></Field>
             <Field label="Decision-maker titles"><Input name="titles" placeholder="Owner, General Manager" required /></Field>
             <Field label="Who exactly" className="md:col-span-2"><Textarea name="description" rows={2} /></Field>
@@ -149,7 +163,7 @@ export default async function SegmentsPage({ params }: { params: Promise<{ id: s
             <Field label="Keywords"><Input name="keywords" placeholder="boutique hotel, hospitality" /></Field>
             <Field label="Industries"><Input name="industries" placeholder="Hospitality" /></Field>
             <Field label="Google Maps queries"><Input name="placesQueries" placeholder="boutique hotel in London" /></Field>
-            <div className="md:col-span-2"><SubmitButton size="sm">Add segment</SubmitButton></div>
+            <div className="md:col-span-2"><SubmitButton>Add segment</SubmitButton></div>
           </form>
         </details>
       </Card>

@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "../db";
 import { APP_NAME } from "../config";
-import { runStructured } from "../ai/claude";
+import { runStructured } from "../ai";
 import type { Mailbox, Message } from "../db/schema";
 import { createMeeting, freeSlots } from "../google/calendar";
 import { hasCalendar } from "../google/client";

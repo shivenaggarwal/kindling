@@ -6,7 +6,7 @@ import { env, sendVia } from "@/lib/config";
 import * as instantly from "@/lib/instantly/client";
 import { approveAllDrafts, approveLead, regenerateSequence, retryMessage, skipLead } from "@/lib/actions";
 import { AutoRefresh, SubmitButton } from "@/components/client";
-import { Badge, Card, CardHeader, Empty, LinkButton, Notice, Select } from "@/components/ui";
+import { Badge, buttonClass, Card, CardHeader, Empty, Led, LinkButton, Notice, Readouts, Select, Stat } from "@/components/ui";
 
 export const metadata = { title: "Outreach" };
 
@@ -94,48 +94,41 @@ export default async function OutreachPage({
     <div className="space-y-5">
       <AutoRefresh active={!!writing} every={5000} />
 
-      <div className="grid gap-3 md:grid-cols-4">
-        <Card className="p-4">
-          <div className="text-xs text-muted">Waiting for review</div>
-          <div className="num mt-1 font-display text-3xl">{totalDrafts[0]?.n ?? 0}</div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-xs text-muted">Approved, in queue</div>
-          <div className="num mt-1 font-display text-3xl">{queue?.approvedFirst ?? 0}</div>
-          <div className="text-xs text-muted">+ {queue?.approvedFollow ?? 0} follow-ups scheduled</div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-xs text-muted">Sent in last 24h</div>
-          <div className="num mt-1 font-display text-3xl">{sentToday[0]?.n ?? 0}</div>
-          <div className="text-xs text-muted">
-            {via === "instantly"
-              ? `capacity ${instantlyInfo?.capacity ?? 0}/day across ${instantlyInfo?.ready ?? 0} warmed mailbox${instantlyInfo?.ready === 1 ? "" : "es"}`
-              : `limit ${mailboxes.reduce((a, m) => a + m.dailyLimit, 0)}/day across ${mailboxes.length} mailbox${mailboxes.length === 1 ? "" : "es"}`}
+      <Readouts cols={4}>
+        <Stat label="Waiting for review" value={totalDrafts[0]?.n ?? 0} accent={(totalDrafts[0]?.n ?? 0) > 0} />
+        <Stat label="Approved, in queue" value={queue?.approvedFirst ?? 0} sub={`${queue?.approvedFollow ?? 0} follow-ups scheduled`} />
+        <Stat
+          label="Sent in 24 hours"
+          value={sentToday[0]?.n ?? 0}
+          sub={
+            via === "instantly"
+              ? `Up to ${instantlyInfo?.capacity ?? 0} a day from ${instantlyInfo?.ready ?? 0} warmed mailbox${instantlyInfo?.ready === 1 ? "" : "es"}`
+              : `Up to ${mailboxes.reduce((a, m) => a + m.dailyLimit, 0)} a day from ${mailboxes.length} mailbox${mailboxes.length === 1 ? "" : "es"}`
+          }
+        />
+        <div className="min-w-0 px-5 py-4">
+          <div className="flex h-[31px] items-center gap-2.5">
+            <Led tone={inWindow ? "success" : "neutral"} className="size-2.5" />
+            <span className="text-[19px] font-semibold tracking-[-0.02em]">{inWindow ? "Open" : "Closed"}</span>
           </div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-xs text-muted">Sending window</div>
-          <div className="mt-1 flex items-center gap-2 text-sm font-medium">
-            <span className={inWindow ? "inline-block size-2 rounded-full bg-success" : "inline-block size-2 rounded-full bg-faint"} />
-            {inWindow ? "Open now" : "Closed now"}
+          <div className="mt-2 text-[13px] font-medium">Sending window</div>
+          <div className="num mt-0.5 text-[12px] text-muted">
+            {s.sendWindowStart}:00 to {s.sendWindowEnd}:00, {s.timezone}
           </div>
-          <div className="text-xs text-muted">
-            {s.sendWindowStart}:00–{s.sendWindowEnd}:00 {s.timezone}
-          </div>
-        </Card>
-      </div>
+        </div>
+      </Readouts>
 
       {via === "instantly" ? (
         !env.instantlyKey ? (
           <Notice tone="warning">
-            This project sends through Instantly, but INSTANTLY_API_KEY isn&apos;t set. See <Link href="/infrastructure" className="font-medium underline">Sending infrastructure</Link>.
+            This project sends through Instantly, but INSTANTLY_API_KEY isn&apos;t set. See <Link href="/infrastructure" className="font-semibold underline underline-offset-2">Sending infrastructure</Link>.
           </Notice>
         ) : instantlyInfo?.error ? (
           <Notice tone="danger">Instantly: {instantlyInfo.error}</Notice>
         ) : (instantlyInfo?.ready ?? 0) === 0 ? (
           <Notice tone="warning">
             No warmed mailboxes yet{instantlyInfo?.warming ? ` (${instantlyInfo.warming} still warming up)` : ""}. Approved emails wait until one is ready.{" "}
-            <Link href="/infrastructure" className="font-medium underline">Get pre-warmed mailboxes</Link>
+            <Link href="/infrastructure" className="font-semibold underline underline-offset-2">Get pre-warmed mailboxes</Link>
           </Notice>
         ) : (
           <Notice tone="success">
@@ -145,7 +138,7 @@ export default async function OutreachPage({
         )
       ) : mailboxes.length === 0 ? (
         <Notice tone="info">
-          No active mailbox. <Link href="/settings" className="font-medium underline">Connect Gmail</Link> and approved emails will start sending.
+          No active mailbox. <Link href="/settings" className="font-semibold underline underline-offset-2">Connect Gmail</Link> and approved emails will start sending.
         </Notice>
       ) : null}
       {(queue?.failed ?? 0) > 0 ? <Notice tone="danger">{queue?.failed} email(s) failed to send. See below.</Notice> : null}
@@ -158,11 +151,11 @@ export default async function OutreachPage({
             drafts.length ? (
               <div className="flex items-center gap-2">
                 <form className="flex items-center gap-2">
-                  <Select name="segment" defaultValue={segment ?? ""} className="h-8 w-auto text-xs">
+                  <Select name="segment" defaultValue={segment ?? ""} className="h-8 w-auto max-w-[200px] rounded-full text-[13px]" aria-label="Segment">
                     <option value="">All segments</option>
                     {segs.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
                   </Select>
-                  <button className="h-8 rounded-lg border border-border px-2.5 text-xs hover:bg-surface-2">Filter</button>
+                  <button className={buttonClass("secondary", "sm")}>Filter</button>
                 </form>
                 <form action={approveAllDrafts.bind(null, id, segment ?? null)}>
                   <SubmitButton size="sm" confirm={`Approve ${segment ? "all drafts in this segment" : "every draft"}? They'll send within your limits.`}>
@@ -174,7 +167,7 @@ export default async function OutreachPage({
           }
         />
         {drafts.length === 0 ? (
-          <div className="p-5">
+          <div className="px-5 pb-5">
             <Empty title={writing ? "Writing emails…" : "Nothing to review"}>
               {writing
                 ? "The agent is researching each company and writing personal sequences. They'll appear here."
@@ -182,26 +175,26 @@ export default async function OutreachPage({
             </Empty>
           </div>
         ) : (
-          <div className="divide-y divide-border">
+          <div className="divide-y divide-border border-t border-border">
             {drafts.map(({ m, lead, company }) => (
-              <div key={m.id} className="grid gap-4 p-5 md:grid-cols-[220px_1fr]">
-                <div className="min-w-0 text-sm">
-                  <Link href={`/projects/${id}/leads/${lead.id}`} className="font-medium hover:text-accent">
+              <div key={m.id} className="grid gap-5 p-5 md:grid-cols-[220px_1fr]">
+                <div className="min-w-0 text-[14px]">
+                  <Link href={`/projects/${id}/leads/${lead.id}`} className="font-semibold underline-offset-2 hover:underline">
                     {[lead.firstName, lead.lastName].filter(Boolean).join(" ") || lead.email}
                   </Link>
-                  <div className="truncate text-xs text-muted">{lead.title}</div>
-                  <div className="mt-1 truncate text-xs">{company?.name}</div>
-                  <div className="mt-2 flex flex-wrap gap-1">
+                  <div className="truncate text-[13px] text-muted">{lead.title}</div>
+                  <div className="mt-1 truncate text-[13px]">{company?.name}</div>
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
                     {m.segmentId ? <Badge>{segName.get(m.segmentId)}</Badge> : null}
-                    {m.segmentId && pausedSegs.includes(m.segmentId) ? <Badge tone="warning">segment not active</Badge> : null}
+                    {m.segmentId && pausedSegs.includes(m.segmentId) ? <Badge tone="warning">Segment paused</Badge> : null}
                   </div>
                 </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-medium">{m.subject}</div>
-                  <div className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-text/90">{m.body}</div>
-                  <div className="mt-3 flex flex-wrap gap-2">
+                <div className="min-w-0 rounded-[18px] bg-surface-2 p-4">
+                  <div className="text-[15px] font-semibold tracking-[-0.01em]">{m.subject}</div>
+                  <div className="mt-2 max-w-[68ch] whitespace-pre-wrap text-[14px] leading-relaxed">{m.body}</div>
+                  <div className="mt-4 flex flex-wrap gap-2">
                     <form action={approveLead.bind(null, lead.id)}><SubmitButton size="sm">Approve</SubmitButton></form>
-                    <LinkButton href={`/projects/${id}/leads/${lead.id}`} size="sm" variant="secondary">Edit & see follow-ups</LinkButton>
+                    <LinkButton href={`/projects/${id}/leads/${lead.id}`} size="sm" variant="secondary" className="bg-surface hover:bg-surface-3">Edit and see follow-ups</LinkButton>
                     <form action={regenerateSequence.bind(null, lead.id)}><SubmitButton size="sm" variant="ghost" pendingText="Queued…">Rewrite</SubmitButton></form>
                     <form action={skipLead.bind(null, lead.id)}><SubmitButton size="sm" variant="ghost">Skip</SubmitButton></form>
                   </div>
@@ -215,19 +208,22 @@ export default async function OutreachPage({
       {recent.length ? (
         <Card>
           <CardHeader title="Recently sent" />
-          <div className="divide-y divide-border">
+          <div className="divide-y divide-border border-t border-border">
             {recent.map(({ m, lead }) => (
-              <div key={m.id} className="flex items-center justify-between gap-3 px-5 py-2.5 text-sm">
-                <div className="min-w-0">
-                  <Link href={`/projects/${id}/leads/${lead.id}`} className="font-medium hover:text-accent">{lead.email}</Link>
-                  <span className="ml-2 text-xs text-muted">{m.kind === "reply" ? "reply" : ["email 1", "follow-up 1", "follow-up 2"][m.step]}</span>
-                  {m.error ? <div className="truncate text-xs text-danger">{m.error}</div> : null}
+              <div key={m.id} className="flex items-center justify-between gap-3 px-5 py-3 text-[14px]">
+                <div className="flex min-w-0 items-start gap-3">
+                  <Led tone={m.status === "failed" ? "danger" : "success"} className="mt-[7px]" />
+                  <div className="min-w-0">
+                    <Link href={`/projects/${id}/leads/${lead.id}`} className="font-medium underline-offset-2 hover:underline">{lead.email}</Link>
+                    <span className="ml-2 text-[13px] text-muted">{m.kind === "reply" ? "Reply" : ["Email 1", "Follow-up 1", "Follow-up 2"][m.step]}</span>
+                    {m.error ? <div className="truncate text-[13px] text-danger">{m.error}</div> : null}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {m.status === "failed" ? (
                     <form action={retryMessage.bind(null, m.id)}><SubmitButton size="sm" variant="secondary">Retry</SubmitButton></form>
                   ) : (
-                    <span className="num text-xs text-muted">{m.sentAt?.toLocaleString()}</span>
+                    <span className="num text-[13px] text-muted">{m.sentAt?.toLocaleString()}</span>
                   )}
                 </div>
               </div>

@@ -5,7 +5,7 @@ import { integrations } from "@/lib/config";
 import { projectTotals } from "@/lib/pipeline/stats";
 import { rerunAnalysis } from "@/lib/actions";
 import { ActivityFeed, SubmitButton } from "@/components/client";
-import { Badge, Card, CardHeader, LinkButton, money, Notice, Stat } from "@/components/ui";
+import { Card, CardHeader, Led, LinkButton, money, Notice, Readouts, Stat } from "@/components/ui";
 import { cn } from "@/lib/cn";
 
 export default async function ProjectOverview({ params }: { params: Promise<{ id: string }> }) {
@@ -57,43 +57,56 @@ export default async function ProjectOverview({ params }: { params: Promise<{ id
             </div>
           </Notice>
         ) : null}
-        {!ints.anthropic ? <Notice>ANTHROPIC_API_KEY isn&apos;t set, so the agent can&apos;t run. Add it to .env and restart.</Notice> : null}
-        {ints.google && mailboxes.length === 0 && p ? (
+        {!ints.ai ? <Notice>No AI key is set, so the agent can&apos;t run. Add GEMINI_API_KEY (or ANTHROPIC_API_KEY) and redeploy.</Notice> : null}
+        {!ints.instantly && ints.google && mailboxes.length === 0 && p ? (
           <Notice tone="info">
-            No mailbox connected yet. <Link href="/settings" className="font-medium underline">Connect Gmail</Link> so approved emails can go out.
+            No mailbox connected yet.{" "}
+            <Link href="/settings" className="font-semibold underline underline-offset-2">
+              Connect Gmail
+            </Link>{" "}
+            so approved emails can go out.
           </Notice>
         ) : null}
 
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <Readouts cols={3}>
           <Stat label="Leads" value={t?.leads ?? 0} />
           <Stat label="Contacted" value={t?.contacted ?? 0} />
           <Stat label="Replies" value={t?.replies ?? 0} />
-          <Stat label="Warm leads" value={t?.positive ?? 0} accent />
-          <Stat label="Meetings" value={t?.meetings ?? 0} accent />
-          <Stat label="Spend" value={money(t?.cost ?? 0)} sub={t?.positive ? `${money((t.cost ?? 0) / t.positive)}/warm lead` : undefined} />
-        </div>
+          <Stat label="Warm leads" value={t?.positive ?? 0} accent={(t?.positive ?? 0) > 0} />
+          <Stat label="Meetings" value={t?.meetings ?? 0} accent={(t?.meetings ?? 0) > 0} />
+          <Stat label="Spend" value={money(t?.cost ?? 0)} sub={t?.positive ? `${money((t.cost ?? 0) / t.positive)} per warm lead` : undefined} />
+        </Readouts>
 
         <Card className="p-5">
-          <ol className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-6">
-            {steps.map((s, i) => (
-              <li key={s.label} className="flex items-center gap-2 text-xs">
+          <ol className="grid grid-cols-6 gap-1.5" aria-label="Progress">
+            {steps.map((s) => (
+              <li key={s.label} className="min-w-0">
                 <span
                   className={cn(
-                    "num grid size-6 shrink-0 place-items-center rounded-full border text-[11px] font-semibold",
-                    s.done ? "border-transparent bg-text text-bg" : s.active ? "border-accent text-accent" : "border-border text-faint",
+                    "block h-1.5 rounded-full",
+                    s.done ? "bg-text" : s.active ? "led-live bg-signal" : "bg-surface-3",
+                  )}
+                />
+                <span
+                  className={cn(
+                    "mt-2.5 hidden text-[12px] leading-tight sm:block",
+                    s.done ? "text-text" : s.active ? "font-semibold text-text" : "text-muted",
                   )}
                 >
-                  {s.done ? "✓" : i + 1}
+                  {s.label}
                 </span>
-                <span className={cn(s.done || s.active ? "text-text" : "text-muted", s.active && "font-medium")}>{s.label}</span>
+                <span className="sr-only">{s.done ? "done" : s.active ? "in progress" : "not started"}</span>
               </li>
             ))}
           </ol>
           {nextStep ? (
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-accent-soft px-4 py-3">
-              <span className="text-sm">{nextStep.text}</span>
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-[16px] bg-surface-2 py-3 pr-3 pl-4">
+              <span className="flex items-center gap-3 text-[14px]">
+                <Led tone="accent" />
+                {nextStep.text}
+              </span>
               <LinkButton href={`/projects/${id}/${nextStep.href}`} variant="primary" size="sm">
-                {nextStep.cta} →
+                {nextStep.cta}
               </LinkButton>
             </div>
           ) : null}
@@ -106,23 +119,29 @@ export default async function ProjectOverview({ params }: { params: Promise<{ id
               description="Used in every email and reply. Edit it in Settings if anything's off."
               action={<LinkButton href={`/projects/${id}/settings`} size="sm" variant="ghost">Edit</LinkButton>}
             />
-            <div className="space-y-4 p-5 text-sm">
-              <p className="text-[15px] leading-relaxed">{p.oneLiner}</p>
+            <div className="space-y-5 px-5 pb-5 text-[14px]">
+              <p className="max-w-[62ch] text-[17px] leading-snug tracking-[-0.01em]">{p.oneLiner}</p>
               <div className="grid gap-5 md:grid-cols-2">
                 <div>
-                  <div className="mb-1.5 text-xs font-medium text-muted">Why customers buy</div>
-                  <ul className="space-y-1">
+                  <div className="mb-2 text-[13px] font-semibold text-muted">Why customers buy</div>
+                  <ul className="space-y-1.5">
                     {p.valueProps.map((v) => (
-                      <li key={v} className="flex gap-2"><span className="text-accent">•</span>{v}</li>
+                      <li key={v} className="flex gap-2.5 leading-snug">
+                        <span className="mt-[7px] size-1 shrink-0 rounded-full bg-text" />
+                        {v}
+                      </li>
                     ))}
                   </ul>
                 </div>
                 <div>
-                  <div className="mb-1.5 text-xs font-medium text-muted">Proof points</div>
-                  <ul className="space-y-1">
+                  <div className="mb-2 text-[13px] font-semibold text-muted">Proof points</div>
+                  <ul className="space-y-1.5">
                     {p.proofPoints.length ? (
                       p.proofPoints.map((v) => (
-                        <li key={v} className="flex gap-2"><span className="text-accent">•</span>{v}</li>
+                        <li key={v} className="flex gap-2.5 leading-snug">
+                          <span className="mt-[7px] size-1 shrink-0 rounded-full bg-text" />
+                          {v}
+                        </li>
                       ))
                     ) : (
                       <li className="text-muted">None found. Add some in Settings, as they make emails more credible.</li>
@@ -131,9 +150,9 @@ export default async function ProjectOverview({ params }: { params: Promise<{ id
                 </div>
               </div>
               <div className="grid gap-5 border-t border-border pt-4 md:grid-cols-3">
-                <div><div className="text-xs text-muted">Sells to</div><div className="mt-0.5">{p.idealCustomers}</div></div>
-                <div><div className="text-xs text-muted">Geography</div><div className="mt-0.5">{p.geography}</div></div>
-                <div><div className="text-xs text-muted">Pricing</div><div className="mt-0.5">{p.pricing ?? "Not listed"}</div></div>
+                <div><div className="text-[13px] font-semibold text-muted">Sells to</div><div className="mt-1 leading-snug">{p.idealCustomers}</div></div>
+                <div><div className="text-[13px] font-semibold text-muted">Geography</div><div className="mt-1 leading-snug">{p.geography}</div></div>
+                <div><div className="text-[13px] font-semibold text-muted">Pricing</div><div className="mt-1 leading-snug">{p.pricing ?? "Not listed"}</div></div>
               </div>
             </div>
           </Card>
@@ -142,14 +161,17 @@ export default async function ProjectOverview({ params }: { params: Promise<{ id
         {project.competitors.length ? (
           <Card>
             <CardHeader title="Competitors" description="Excluded from lead lists and used to sharpen positioning." />
-            <div className="divide-y divide-border">
+            <div className="divide-y divide-border border-t border-border">
               {project.competitors.map((c) => (
-                <div key={c.domain} className="flex items-start gap-3 px-5 py-3 text-sm">
+                <div key={c.domain} className="flex items-start gap-3 px-5 py-3.5 text-[14px]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={`https://www.google.com/s2/favicons?domain=${c.domain}&sz=32`} alt="" className="mt-0.5 size-4 rounded" />
                   <div className="min-w-0">
-                    <div className="font-medium">{c.name} <span className="font-normal text-muted">· {c.domain}</span></div>
-                    <div className="text-xs text-muted">{c.note}</div>
+                    <div className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="font-semibold">{c.name}</span>
+                      <span className="text-[13px] text-muted">{c.domain}</span>
+                    </div>
+                    <div className="mt-0.5 text-[13px] leading-snug text-muted">{c.note}</div>
                   </div>
                 </div>
               ))}
@@ -160,10 +182,7 @@ export default async function ProjectOverview({ params }: { params: Promise<{ id
 
       <div className="space-y-4">
         <Card className="p-5 lg:sticky lg:top-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-sm font-semibold">Agent activity</h3>
-            {project.autopilot ? <Badge tone="accent">Autopilot</Badge> : null}
-          </div>
+          <h3 className="mb-3 text-[17px] font-semibold tracking-[-0.02em]">Agent</h3>
           <ActivityFeed
             projectId={id}
             busy={Boolean(busyJob)}

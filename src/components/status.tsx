@@ -21,12 +21,12 @@ export function LeadStatus({ status }: { status: string }) {
 }
 
 const EMAIL: Record<string, { label: string; tone: Parameters<typeof Badge>[0]["tone"] }> = {
-  verified: { label: "verified", tone: "success" },
-  valid: { label: "valid", tone: "success" },
-  accept_all: { label: "catch-all", tone: "warning" },
-  unknown: { label: "unverified", tone: "neutral" },
-  generic: { label: "shared inbox", tone: "neutral" },
-  invalid: { label: "invalid", tone: "danger" },
+  verified: { label: "Verified", tone: "success" },
+  valid: { label: "Valid", tone: "success" },
+  accept_all: { label: "Catch-all", tone: "warning" },
+  unknown: { label: "Unverified", tone: "neutral" },
+  generic: { label: "Shared inbox", tone: "neutral" },
+  invalid: { label: "Invalid", tone: "danger" },
 };
 
 export function EmailStatus({ status }: { status: string }) {

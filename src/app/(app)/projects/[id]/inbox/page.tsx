@@ -40,47 +40,54 @@ export default async function InboxPage({ params }: { params: Promise<{ id: stri
     const draft = draftByLead.get(lead.id);
     const meeting = draft?.decision?.action === "book_meeting" && draft.decision.meetingStartIso ? new Date(draft.decision.meetingStartIso) : null;
     return (
-      <div className="grid gap-4 p-5 md:grid-cols-[220px_1fr]">
-        <div className="min-w-0 text-sm">
-          <Link href={`/projects/${id}/leads/${lead.id}`} className="font-medium hover:text-accent">
+      <div className="grid gap-5 p-5 md:grid-cols-[220px_1fr]">
+        <div className="min-w-0 text-[14px]">
+          <Link href={`/projects/${id}/leads/${lead.id}`} className="font-semibold underline-offset-2 hover:underline">
             {[lead.firstName, lead.lastName].filter(Boolean).join(" ") || lead.email}
           </Link>
-          <div className="truncate text-xs text-muted">{lead.title}</div>
-          <div className="truncate text-xs">{company?.name}</div>
-          <div className="mt-2 flex flex-wrap gap-1">
+          <div className="truncate text-[13px] text-muted">{lead.title}</div>
+          <div className="truncate text-[13px]">{company?.name}</div>
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
             <ReplyBadge category={m.handled ? m.decision?.category : null} />
             <LeadStatus status={lead.status} />
           </div>
         </div>
         <div className="min-w-0 space-y-3">
-          <div className="rounded-lg bg-surface-2/60 p-3.5">
-            <div className="mb-1 text-xs text-muted">{m.sentAt ? humanTime(m.sentAt, project.settings.timezone) : ""}</div>
-            <div className="whitespace-pre-wrap text-sm leading-relaxed">{m.body}</div>
+          <div className="mr-auto max-w-[68ch] rounded-[18px] rounded-bl-[6px] bg-surface-2 p-4">
+            <div className="mb-1.5 text-[12px] text-muted">{m.sentAt ? humanTime(m.sentAt, project.settings.timezone) : ""}</div>
+            <div className="whitespace-pre-wrap text-[14px] leading-relaxed">{m.body}</div>
           </div>
-          {m.decision?.summary ? <p className="text-xs text-ai">AI read: {m.decision.summary}</p> : null}
+          {m.decision?.summary ? (
+            <p className="flex gap-2 text-[13px] text-muted">
+              <span className="mt-[6px] size-1.5 shrink-0 rounded-full bg-signal" />
+              {m.decision.summary}
+            </p>
+          ) : null}
           {m.decision?.referralEmail ? (
-            <p className="text-xs">Referred to <b>{m.decision.referralName}</b> ({m.decision.referralEmail})</p>
+            <p className="text-[13px]">
+              Referred to <b>{m.decision.referralName}</b> ({m.decision.referralEmail})
+            </p>
           ) : null}
 
           {draft?.status === "draft" ? (
-            <form action={approveReplyAction.bind(null, draft.id)} className="space-y-2 rounded-lg border border-border p-3.5">
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="font-medium">Suggested reply</span>
+            <form action={approveReplyAction.bind(null, draft.id)} className="ml-auto max-w-[68ch] space-y-3 rounded-[18px] rounded-br-[6px] border border-border-strong p-4">
+              <div className="flex flex-wrap items-center gap-2 text-[13px]">
+                <span className="font-semibold">Suggested reply</span>
                 {meeting ? <Badge tone="success">Books a call: {humanTime(meeting, project.settings.timezone)}</Badge> : null}
               </div>
               <Textarea name="body" defaultValue={draft.body} rows={Math.min(10, draft.body.split("\n").length + 2)} />
               <div className="flex gap-2">
-                <SubmitButton size="sm" pendingText={meeting ? "Booking…" : "Sending…"}>{meeting ? "Book & send" : "Approve & send"}</SubmitButton>
+                <SubmitButton size="sm" pendingText={meeting ? "Booking…" : "Sending…"}>{meeting ? "Book and send" : "Send reply"}</SubmitButton>
                 <SubmitButton size="sm" variant="ghost" formAction={discardReply.bind(null, draft.id)}>Discard</SubmitButton>
               </div>
             </form>
           ) : draft && ["approved", "sending", "sent"].includes(draft.status) ? (
-            <div className="text-xs text-muted">
+            <div className="flex items-center gap-2 text-[13px] text-muted">
               <Badge tone={draft.status === "sent" ? "success" : "info"}>{draft.status === "sent" ? "Replied" : "Reply queued"}</Badge>
-              <span className="ml-2 line-clamp-1 inline">{draft.body.slice(0, 120)}</span>
+              <span className="line-clamp-1">{draft.body.slice(0, 120)}</span>
             </div>
           ) : !m.handled ? (
-            <div className="text-xs text-muted"><span className="ember-dot mr-1.5 inline-block size-1.5 rounded-full bg-accent" />Reading and drafting a reply…</div>
+            <div className="flex items-center gap-2 text-[13px] text-muted"><span className="led-live inline-block size-1.5 rounded-full bg-signal" />Reading and drafting a reply…</div>
           ) : null}
         </div>
       </div>
@@ -98,14 +105,14 @@ export default async function InboxPage({ params }: { params: Promise<{ id: stri
       ) : null}
       {needsAction.length ? (
         <Card>
-          <CardHeader title={`Needs your OK (${needsAction.length})`} description="Edit if you like, then send. Meetings are added to your Google Calendar with a Meet link." />
-          <div className="divide-y divide-border">{needsAction.map((t) => <Row key={t.m.id} {...t} />)}</div>
+          <CardHeader title={`Waiting for you (${needsAction.length})`} description="Edit if you like, then send. Meetings go on your Google Calendar with a Meet link." />
+          <div className="divide-y divide-border border-t border-border">{needsAction.map((t) => <Row key={t.m.id} {...t} />)}</div>
         </Card>
       ) : null}
       {rest.length ? (
         <Card>
           <CardHeader title="All replies" />
-          <div className="divide-y divide-border">{rest.map((t) => <Row key={t.m.id} {...t} />)}</div>
+          <div className="divide-y divide-border border-t border-border">{rest.map((t) => <Row key={t.m.id} {...t} />)}</div>
         </Card>
       ) : null}
     </div>

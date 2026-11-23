@@ -1,7 +1,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "../db";
-import { runStructured } from "../ai/claude";
+import { runStructured } from "../ai";
 import { env } from "../config";
 import { activity } from "../log";
 import { enqueue } from "../jobs/queue";

@@ -24,8 +24,24 @@ export const env = {
   },
 };
 
+const hasAnthropic = () => Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
+const hasGemini = () => Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY);
+
+/** Which model provider runs the agent: AI_PROVIDER if set, else whichever key is present (Claude first). */
+export function aiProvider(): "anthropic" | "gemini" {
+  const pick = (process.env.AI_PROVIDER ?? "").toLowerCase();
+  if (pick === "gemini" || pick === "google") return "gemini";
+  if (pick === "anthropic" || pick === "claude") return "anthropic";
+  if (hasAnthropic()) return "anthropic";
+  return hasGemini() ? "gemini" : "anthropic";
+}
+
 export const integrations = () => ({
-  anthropic: Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN),
+  /** The configured AI provider has a key, so the agent can run. */
+  ai: aiProvider() === "gemini" ? hasGemini() : hasAnthropic(),
+  aiProvider: aiProvider(),
+  anthropic: hasAnthropic(),
+  gemini: hasGemini(),
   apollo: Boolean(env.apolloKey),
   hunter: Boolean(env.hunterKey),
   places: Boolean(env.placesKey),

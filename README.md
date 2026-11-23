@@ -32,7 +32,10 @@ Sign in with `APP_PASSWORD` from `.env`.
 
 | Variable | Needed for | Where to get it |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | **Required.** All AI steps | console.anthropic.com → API keys |
+| `GEMINI_API_KEY` | **One AI key is required.** Runs every AI step with Google Search grounding | Google AI Studio → API keys, or a Vertex AI express-mode key (detected automatically) |
+| `ANTHROPIC_API_KEY` | The alternative AI provider (Claude) | console.anthropic.com → API keys |
+| `AI_PROVIDER` | Which provider runs the agent when both keys are set (`gemini` or `anthropic`) | |
+| `GEMINI_MODEL` / `GEMINI_FALLBACK_MODELS` | Optional model choice. Defaults: `gemini-3.8-flash`, falling back to `gemini-3.1-pro-preview` when it's overloaded | |
 | `APOLLO_API_KEY` | Decision makers with verified emails | Apollo → Settings → Integrations → API. The key needs access to `mixed_people/api_search` (free) and `people/bulk_match` (1 credit per revealed email). |
 | `HUNTER_API_KEY` | Emails at a domain and verification | hunter.io → API |
 | `INSTANTLY_API_KEY` | High-volume sending through warmed mailboxes | Instantly → Settings → Integrations → API Keys (scope `all:all`). Needs a paid plan with API access. |
@@ -90,7 +93,7 @@ Kindling runs on Vercel without a separate worker:
 Steps:
 
 1. Import the repo in Vercel, and add a Postgres database (e.g. **Neon** from the Vercel Marketplace, which sets `DATABASE_URL`).
-2. Set the environment variables: `APP_PASSWORD`, `APP_SECRET`, `CRON_SECRET`, `ANTHROPIC_API_KEY`, plus any lead-source and Google keys. `APP_URL` defaults to the production domain.
+2. Set the environment variables: `APP_PASSWORD`, `APP_SECRET`, `CRON_SECRET`, `GEMINI_API_KEY` (or `ANTHROPIC_API_KEY`), plus any lead-source and Google keys. `APP_URL` defaults to the production domain.
 3. Deploy. The `vercel-build` script runs the database migrations before `next build`.
 4. In Google Cloud, add `https://<your-domain>/api/google/callback` as an authorised redirect URI.
 

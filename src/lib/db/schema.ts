@@ -193,7 +193,7 @@ export const usageEvents = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }),
     segmentId: uuid("segment_id").references(() => segments.id, { onDelete: "set null" }),
-    provider: text("provider").notNull(), // anthropic | apollo | hunter | places
+    provider: text("provider").notNull(), // anthropic | gemini | apollo | hunter | places
     operation: text("operation").notNull(),
     units: doublePrecision("units").notNull().default(0),
     costUsd: doublePrecision("cost_usd").notNull().default(0),

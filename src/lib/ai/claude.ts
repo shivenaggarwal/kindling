@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { recordUsage } from "../log";
+import { AiRefusal, closedJsonSchema, type StructuredOpts, type UsageCtx } from "./common";
 
 export const MODEL = "claude-opus-5-5";
 
@@ -18,8 +19,6 @@ export function claude() {
   if (!_client) _client = new Anthropic({ maxRetries: 4, timeout: 10 * 60 * 1000 });
   return _client;
 }
-
-type UsageCtx = { projectId?: string | null; segmentId?: string | null; operation: string };
 
 async function trackUsage(usage: Anthropic.Beta.BetaUsage, ctx: UsageCtx) {
   const input = usage.input_tokens ?? 0;
@@ -44,15 +43,9 @@ async function trackUsage(usage: Anthropic.Beta.BetaUsage, ctx: UsageCtx) {
   });
 }
 
-/**
- * Convert a Zod schema into a JSON Schema that strict tool use accepts:
- * every object closed (additionalProperties: false) with all keys required,
- * and validation keywords the API doesn't need stripped out.
- */
-function toStrictSchema(schema: z.ZodType): Record<string, unknown> {
-  const json = z.toJSONSchema(schema, { target: "draft-2020-12", unrepresentable: "any" }) as Record<string, unknown>;
-  const DROP = new Set([
-    "$schema",
+/** JSON Schema that strict tool use accepts: closed objects, validation keywords stripped. */
+const toStrictSchema = (schema: z.ZodType) =>
+  closedJsonSchema(schema, [
     "minLength",
     "maxLength",
     "minimum",
@@ -65,43 +58,14 @@ function toStrictSchema(schema: z.ZodType): Record<string, unknown> {
     "format",
     "default",
   ]);
-  const walk = (node: unknown): unknown => {
-    if (Array.isArray(node)) return node.map(walk);
-    if (!node || typeof node !== "object") return node;
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
-      if (DROP.has(k)) continue;
-      out[k] = walk(v);
-    }
-    if (out.type === "object" && out.properties && typeof out.properties === "object") {
-      out.additionalProperties = false;
-      out.required = Object.keys(out.properties as object);
-    }
-    return out;
-  };
-  return walk(json) as Record<string, unknown>;
-}
 
-export class ClaudeRefusal extends Error {}
 
 /**
  * Run one structured task: Claude may use web search / web fetch (server-side
  * tools) and must finish by calling a strict `submit` tool whose input is the
  * result. Returns the validated result.
  */
-export async function runStructured<T extends z.ZodType>(opts: {
-  system: string;
-  /** Stable per-project context placed after the system prompt and cached. */
-  context?: string;
-  prompt: string;
-  schema: T;
-  submitDescription?: string;
-  webSearch?: number; // max searches
-  webFetch?: number; // max fetches
-  effort?: "low" | "medium" | "high" | "xhigh";
-  maxTokens?: number;
-  usage: UsageCtx;
-}): Promise<z.infer<T>> {
+export async function runClaude<T extends z.ZodType>(opts: StructuredOpts<T>): Promise<z.infer<T>> {
   const client = claude();
   const toolName = "submit";
 
@@ -139,7 +103,7 @@ export async function runStructured<T extends z.ZodType>(opts: {
     await trackUsage(msg.usage, opts.usage);
 
     if (msg.stop_reason === "refusal") {
-      throw new ClaudeRefusal(msg.stop_details?.explanation ?? "Claude declined this request");
+      throw new AiRefusal(msg.stop_details?.explanation ?? "Claude declined this request");
     }
 
     const submit = msg.content.find(

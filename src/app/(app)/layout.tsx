@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { desc } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { APP_NAME } from "@/lib/config";
 import { logout } from "@/lib/actions";
 import { NavLink } from "@/components/client";
-import { Logo } from "@/components/logo";
+import { Logo, Wordmark } from "@/components/logo";
+import { Led } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 // Server actions here may start background work with after(); give it the full function budget.
@@ -18,63 +18,76 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen">
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-border bg-bg px-3 py-4 md:flex">
-        <Link href="/" className="mb-6 flex items-center gap-2 px-2.5">
-          <Logo size={26} />
-          <span className="font-display text-[22px] leading-none">{APP_NAME}</span>
-        </Link>
-
-        <NavLink href="/" exact>
-          Overview
-        </NavLink>
-
-        <div className="mt-5 mb-1.5 flex items-center justify-between px-2.5">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-faint">Projects</span>
-          <Link href="/projects/new" className="text-xs text-muted hover:text-accent" title="New project">
-            + New
+      <aside className="sticky top-0 hidden h-screen w-[264px] shrink-0 p-3 pr-0 md:block">
+        <div className="flex h-full flex-col rounded-[24px] bg-surface p-3 ring-1 ring-[var(--card-ring)]">
+          <Link href="/" className="mb-7 flex items-center gap-2.5 rounded-[12px] px-3 pt-2 pb-1" aria-label="Kindling home">
+            <Logo size={22} />
+            <Wordmark className="text-[21px]" />
           </Link>
-        </div>
-        <div className="flex-1 space-y-0.5 overflow-y-auto">
-          {projects.map((p) => (
-            <NavLink key={p.id} href={`/projects/${p.id}`}>
-              <span
-                className={
-                  p.status === "analyzing"
-                    ? "ember-dot inline-block size-1.5 shrink-0 rounded-full bg-accent"
-                    : p.status === "error"
-                      ? "inline-block size-1.5 shrink-0 rounded-full bg-danger"
-                      : "inline-block size-1.5 shrink-0 rounded-full bg-success"
-                }
-              />
-              <span className="truncate">{p.name}</span>
-            </NavLink>
-          ))}
-          {projects.length === 0 ? <p className="px-2.5 text-xs text-faint">No projects yet</p> : null}
-        </div>
 
-        <div className="mt-4 space-y-0.5 border-t border-border pt-3">
-          <NavLink href="/infrastructure">Sending infrastructure</NavLink>
-          <NavLink href="/settings">Mailboxes & integrations</NavLink>
-          <form action={logout}>
-            <button className="w-full rounded-lg px-2.5 py-1.5 text-left text-sm text-muted hover:bg-surface-2 hover:text-text">Sign out</button>
+          <nav className="space-y-0.5" aria-label="Main">
+            <NavLink href="/" exact>
+              Overview
+            </NavLink>
+            <NavLink href="/infrastructure">Sending</NavLink>
+            <NavLink href="/settings">Mailboxes & keys</NavLink>
+          </nav>
+
+          <div className="mt-7 mb-1.5 flex items-center justify-between px-3">
+            <span className="text-[13px] font-semibold text-muted">Projects</span>
+            <Link
+              href="/projects/new"
+              className="grid size-6 place-items-center rounded-full bg-surface-2 text-[15px] leading-none text-text transition-colors hover:bg-surface-3"
+              title="New project"
+              aria-label="New project"
+            >
+              +
+            </Link>
+          </div>
+          <nav className="scrollbar-none -mx-1 flex-1 space-y-0.5 overflow-y-auto px-1" aria-label="Projects">
+            {projects.map((p) => (
+              <NavLink key={p.id} href={`/projects/${p.id}`}>
+                <Led tone={p.status === "analyzing" ? "ai" : p.status === "error" ? "danger" : "success"} />
+                <span className="truncate">{p.name}</span>
+              </NavLink>
+            ))}
+            {projects.length === 0 ? <p className="px-3 py-1 text-[13px] text-faint">Your projects will appear here.</p> : null}
+          </nav>
+
+          <form action={logout} className="mt-3 border-t border-border pt-3">
+            <button className="flex h-9 w-full items-center rounded-[11px] px-3 text-left text-[14px] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-text">
+              Sign out
+            </button>
           </form>
         </div>
       </aside>
 
       <div className="min-w-0 flex-1">
-        {/* Compact top bar on small screens */}
-        <div className="flex items-center justify-between border-b border-border px-4 py-3 md:hidden">
-          <Link href="/" className="flex items-center gap-2">
-            <Logo size={22} />
-            <span className="font-display text-xl">{APP_NAME}</span>
-          </Link>
-          <div className="flex gap-3 text-sm text-muted">
-            <Link href="/projects/new">New</Link>
-            <Link href="/infrastructure">Sending</Link>
-            <Link href="/settings">Settings</Link>
+        {/* Small screens: wordmark and a scrolling row of destinations. */}
+        <header className="sticky top-0 z-20 border-b border-border bg-bg/85 backdrop-blur-xl md:hidden">
+          <div className="flex items-center justify-between px-4 pt-3 pb-2">
+            <Link href="/" className="flex items-center gap-2" aria-label="Kindling home">
+              <Logo size={18} />
+              <Wordmark className="text-[18px]" />
+            </Link>
+            <Link href="/projects/new" className="flex h-8 items-center rounded-full bg-text px-3.5 text-[13px] font-medium text-bg">
+              New project
+            </Link>
           </div>
-        </div>
-        <main className="mx-auto max-w-6xl px-4 py-8 md:px-8">{children}</main>
+          <nav className="scrollbar-none flex gap-1 overflow-x-auto px-3 pb-2.5" aria-label="Main">
+            {[
+              ["/", "Overview"],
+              ["/infrastructure", "Sending"],
+              ["/settings", "Mailboxes & keys"],
+              ...projects.map((p) => [`/projects/${p.id}`, p.name]),
+            ].map(([href, label]) => (
+              <Link key={href} href={href} className="shrink-0 rounded-full bg-surface px-3 py-1.5 text-[13px] font-medium whitespace-nowrap">
+                {label}
+              </Link>
+            ))}
+          </nav>
+        </header>
+        <main className="mx-auto max-w-[1120px] px-4 py-8 md:px-10 md:py-12">{children}</main>
       </div>
     </div>
   );
