@@ -1,0 +1,32 @@
+# Pings the deployed app every 5 minutes so it sends due emails, checks for
+# replies and works through queued jobs. Needed on Vercel's Hobby plan, where
+# Vercel Cron can only run once a day. Free for public repositories.
+#
+# Repository secrets: APP_URL (e.g. https://kindling.vercel.app) and CRON_SECRET
+# (same value as the CRON_SECRET env var in Vercel). Without them it does nothing.
+name: Scheduler
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping /api/cron/tick
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "APP_URL / CRON_SECRET secrets not set; skipping."
+            exit 0
+          fi
+          curl -fsS --max-time 60 --retry 2 --retry-delay 5 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "${APP_URL%/}/api/cron/tick"

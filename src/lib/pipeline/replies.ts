@@ -31,9 +31,10 @@ async function cancelPendingSequence(leadId: string) {
 }
 
 /** Pull new replies on threads we started, for every connected mailbox. */
-export async function pollReplies() {
+export async function pollReplies(opts: { minIntervalMs?: number } = {}) {
   const mailboxes = await db.query.mailboxes.findMany({ where: eq(schema.mailboxes.active, true) });
   for (const mb of mailboxes) {
+    if (opts.minIntervalMs && mb.lastPolledAt && Date.now() - mb.lastPolledAt.getTime() < opts.minIntervalMs) continue;
     try {
       await pollMailbox(mb);
       await db.update(schema.mailboxes).set({ lastPolledAt: new Date(), lastError: null }).where(eq(schema.mailboxes.id, mb.id));

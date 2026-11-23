@@ -28,12 +28,17 @@ async function run(job: Job) {
   }
 }
 
+/** Job types that can take a few minutes (web research). */
+export const LONG_JOBS = ["analyze-project", "propose-segments", "find-leads"];
+
 /** Atomically claim the next due job (safe with several workers). */
-async function claim(): Promise<Job | null> {
+export async function claim(opts: { allowLong?: boolean } = {}): Promise<Job | null> {
+  const skipLong = opts.allowLong === false;
   const rows = await db.execute<{ id: string }>(sql`
     update jobs set status = 'running', locked_at = now(), attempts = attempts + 1
     where id = (
       select id from jobs where status = 'queued' and run_at <= now()
+      ${skipLong ? sql`and type not in (${sql.join(LONG_JOBS.map((t) => sql`${t}`), sql`, `)})` : sql``}
       order by run_at asc limit 1 for update skip locked
     )
     returning id
@@ -86,6 +91,18 @@ async function onFailure(job: Job, e: unknown) {
   }
 }
 
+/** Run one claimed job and record the outcome. */
+export async function execute(job: Job) {
+  const started = Date.now();
+  try {
+    await run(job);
+    await db.update(schema.jobs).set({ status: "done", finishedAt: new Date(), lastError: null }).where(eq(schema.jobs.id, job.id));
+    console.log(`[job ${job.type}] done in ${((Date.now() - started) / 1000).toFixed(1)}s`);
+  } catch (e) {
+    await onFailure(job, e);
+  }
+}
+
 export async function workLoop(slot: number, stop: () => boolean) {
   while (!stop()) {
     let job: Job | null = null;
@@ -98,14 +115,7 @@ export async function workLoop(slot: number, stop: () => boolean) {
       await new Promise((r) => setTimeout(r, 1500 + slot * 250));
       continue;
     }
-    const started = Date.now();
-    try {
-      await run(job);
-      await db.update(schema.jobs).set({ status: "done", finishedAt: new Date(), lastError: null }).where(eq(schema.jobs.id, job.id));
-      console.log(`[job ${job.type}] done in ${((Date.now() - started) / 1000).toFixed(1)}s`);
-    } catch (e) {
-      await onFailure(job, e);
-    }
+    await execute(job);
   }
 }
 

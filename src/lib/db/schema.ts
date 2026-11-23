@@ -234,6 +234,12 @@ export const jobs = pgTable(
   (t) => [index("jobs_pick_idx").on(t.status, t.runAt)],
 );
 
+/** Short-lived named leases so overlapping scheduler runs don't step on each other. */
+export const leases = pgTable("leases", {
+  name: text("name").primaryKey(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
 export type Project = typeof projects.$inferSelect;
 export type Segment = typeof segments.$inferSelect;
 export type Company = typeof companies.$inferSelect;

@@ -7,6 +7,8 @@ import { NavLink } from "@/components/client";
 import { Logo } from "@/components/logo";
 
 export const dynamic = "force-dynamic";
+// Server actions here may start background work with after(); give it the full function budget.
+export const maxDuration = 300;
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const projects = await db

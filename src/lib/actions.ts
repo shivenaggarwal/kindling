@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { db, schema } from "./db";
 import { createSessionToken, SESSION_COOKIE, sessionCookieOptions } from "./auth";
 import { enqueue } from "./jobs/queue";
+import { kick } from "./jobs/kick";
 import { activity } from "./log";
 import { approveReply } from "./pipeline/replies";
 import { normalizeDomain } from "./sources/site";
@@ -28,7 +29,10 @@ export async function login(_: string | null, fd: FormData): Promise<string | nu
   if (!expected) return "APP_PASSWORD isn't set in .env";
   const given = str(fd, "password");
   const h = (s: string) => createHash("sha256").update(s).digest();
-  if (!timingSafeEqual(h(given), h(expected))) return "Wrong password";
+  if (!timingSafeEqual(h(given), h(expected))) {
+    await new Promise((r) => setTimeout(r, 800));
+    return "Wrong password";
+  }
   (await cookies()).set(SESSION_COOKIE, await createSessionToken(), sessionCookieOptions);
   const next = str(fd, "next");
   redirect(next.startsWith("/") && !next.startsWith("//") ? next : "/");
@@ -51,6 +55,7 @@ export async function createProject(_: string | null, fd: FormData): Promise<str
     .returning({ id: schema.projects.id });
   await activity(p.id, `New project for ${domain}`);
   await enqueue("analyze-project", { projectId: p.id }, { projectId: p.id });
+  kick();
   redirect(`/projects/${p.id}`);
 }
 
@@ -120,6 +125,7 @@ export async function rerunAnalysis(projectId: string) {
   }
   await db.update(schema.projects).set({ status: "analyzing", error: null }).where(eq(schema.projects.id, projectId));
   await enqueue("analyze-project", { projectId }, { projectId });
+  kick();
   refresh();
 }
 
@@ -146,6 +152,7 @@ export async function findLeadsForSegment(segmentId: string, fd: FormData) {
     .returning();
   if (!seg) return;
   await enqueue("find-leads", { segmentId, count }, { projectId: seg.projectId });
+  kick();
   refresh();
 }
 
@@ -220,6 +227,7 @@ export async function approveLeads(leadIds: string[]) {
       .set({ status: "active" })
       .where(and(inArray(schema.segments.id, segIds), eq(schema.segments.status, "proposed")));
   }
+  kick({ send: true });
   refresh();
 }
 
@@ -259,6 +267,7 @@ export async function regenerateSequence(leadId: string) {
     .where(and(eq(schema.messages.leadId, leadId), eq(schema.messages.kind, "sequence"), inArray(schema.messages.status, ["draft", "approved", "cancelled"])));
   await db.update(schema.leads).set({ status: "new" }).where(eq(schema.leads.id, leadId));
   await enqueue("write-sequence", { leadId }, { projectId: lead.projectId });
+  kick();
   refresh();
 }
 
@@ -278,6 +287,7 @@ export async function retryMessage(messageId: string) {
     .update(schema.messages)
     .set({ status: "approved", error: null })
     .where(and(eq(schema.messages.id, messageId), eq(schema.messages.status, "failed")));
+  kick({ send: true });
   refresh();
 }
 
@@ -285,6 +295,7 @@ export async function retryMessage(messageId: string) {
 
 export async function approveReplyAction(messageId: string, fd: FormData) {
   await approveReply(messageId, str(fd, "body"));
+  kick({ send: true });
   refresh();
 }
 

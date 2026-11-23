@@ -59,7 +59,23 @@ Scopes requested: `gmail.send`, `gmail.readonly`, `calendar.events` and `calenda
 - **Fill in the sender name and postal address** in each project's Settings. They go in the footer, along with the opt-out line. "Unsubscribe" and "not interested" replies, and bounces, are added to the do-not-contact list automatically.
 - Cold B2B email is legal in the US (CAN-SPAM) and, under "legitimate interest", in the UK/EU (PECR/GDPR) when it's relevant to the recipient's role, identifies you, and honours opt-outs. Check the rules for the countries you target.
 
-## Production
+## Deploy to Vercel
+
+Kindling runs on Vercel without a separate worker:
+
+- **When you click something** (create a project, find leads, approve emails), the work starts right away in the background via `after()`, for up to 5 minutes per request.
+- **Scheduled work** (sending due emails, checking for replies, autopilot) runs through `/api/cron/tick`, which is protected by `CRON_SECRET`:
+  - **Hobby plan:** Vercel Cron can only run once a day, so `.github/workflows/scheduler.yml` pings the endpoint every 5 minutes. That's free for public repos. Add the repository secrets `APP_URL` and `CRON_SECRET`.
+  - **Pro plan:** change the schedule in `vercel.json` to `* * * * *` and you can delete the GitHub workflow.
+
+Steps:
+
+1. Import the repo in Vercel, and add a Postgres database (e.g. **Neon** from the Vercel Marketplace, which sets `DATABASE_URL`).
+2. Set the environment variables: `APP_PASSWORD`, `APP_SECRET`, `CRON_SECRET`, `ANTHROPIC_API_KEY`, plus any lead-source and Google keys. `APP_URL` defaults to the production domain.
+3. Deploy. The `vercel-build` script runs the database migrations before `next build`.
+4. In Google Cloud, add `https://<your-domain>/api/google/callback` as an authorised redirect URI.
+
+## Self-hosting with a worker
 
 ```bash
 pnpm build
@@ -76,7 +92,7 @@ src/lib/pipeline/   analyze → segments → leads → write → send → replie
 src/lib/sources/    apollo, hunter, places, site crawler
 src/lib/google/     OAuth client, Gmail send/read, Calendar free/busy and events
 src/lib/ai/claude.ts  Claude wrapper: web search/fetch, strict structured output, cost tracking
-src/lib/jobs/       Postgres job queue + runner
+src/lib/jobs/       Postgres job queue, runner, serverless drain + scheduler tick
 src/worker/         worker entrypoint (jobs + timers)
 src/app/            dashboard (Next.js App Router)
 src/lib/config.ts   product name and env (rename the product here)

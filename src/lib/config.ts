@@ -5,7 +5,10 @@ export const APP_TAGLINE = "Turns cold markets into warm leads";
 const num = (v: string | undefined, d: number) => (v && !Number.isNaN(Number(v)) ? Number(v) : d);
 
 export const env = {
-  appUrl: (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, ""),
+  appUrl: (
+    process.env.APP_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000")
+  ).replace(/\/$/, ""),
   appPassword: process.env.APP_PASSWORD ?? "",
   appSecret: process.env.APP_SECRET ?? "",
   apolloKey: process.env.APOLLO_API_KEY ?? "",
